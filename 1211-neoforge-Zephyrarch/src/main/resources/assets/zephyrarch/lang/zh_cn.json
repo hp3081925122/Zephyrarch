@@ -1,0 +1,14 @@
+{
+  "itemGroup.zephyrarch": "罡风君主",
+  "entity.zephyrarch.zephyrarch": "罡风君主",
+  "entity.zephyrarch.zephyr_charge": "罡风爆弹",
+  "item.zephyrarch.zephyrarch_spawn_egg": "罡风君主刷怪蛋",
+  "item.zephyrarch.tempest_crest": "罡风敕令",
+  "item.zephyrarch.tempest_crest.desc": "右键在开阔处引动狂飙，召唤首领「罡风君主」",
+  "item.zephyrarch.zephyr_core": "罡风核心",
+  "item.zephyrarch.zephyr_core.desc": "凝聚风暴君主本源的高密风核，可用于锻造风暴神兵",
+  "item.zephyrarch.sovereign_galeblade": "君主裂风刃",
+  "item.zephyrarch.sovereign_galeblade.desc": "手持免疫摔落伤害；右键向前疾冲并发射一枚罡风爆弹",
+  "message.zephyrarch.summon_blocked": "上方空间不足，无法召唤罡风君主",
+  "message.zephyrarch.summoned": "狂风骤起，罡风君主已降临！"
+}
