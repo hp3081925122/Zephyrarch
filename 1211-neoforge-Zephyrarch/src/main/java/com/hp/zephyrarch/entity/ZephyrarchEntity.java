@@ -892,7 +892,8 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             return;
         }
         if (t < 32) {
-            Vec3 hand = position().add(forward().scale(2.1D)).add(right().scale(0.9D)).add(0.0D, 2.3D - victim.getBbHeight() * 0.5D, 0.0D);
+            // 与 gale_grab 动画中右拳的位置对齐：前 1.6 格、右 0.9 格、高 3.2 格
+            Vec3 hand = position().add(forward().scale(1.6D)).add(right().scale(0.9D)).add(0.0D, 3.2D - victim.getBbHeight() * 0.5D, 0.0D);
             victim.teleportTo(hand.x, hand.y, hand.z);
             victim.setDeltaMovement(Vec3.ZERO);
             victim.fallDistance = 0.0F;

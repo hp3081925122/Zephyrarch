@@ -27,7 +27,6 @@ public final class Zephyrarch {
 
         ModRegistry.ENTITIES.register(modEventBus);
         ModRegistry.ITEMS.register(modEventBus);
-        ModRegistry.EFFECTS.register(modEventBus);
         ModRegistry.TABS.register(modEventBus);
         ModSounds.SOUNDS.register(modEventBus);
 

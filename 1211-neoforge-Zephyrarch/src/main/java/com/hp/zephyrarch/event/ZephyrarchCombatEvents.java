@@ -2,12 +2,10 @@ package com.hp.zephyrarch.event;
 
 import com.hp.zephyrarch.config.ZephyrarchConfig;
 import com.hp.zephyrarch.entity.ZephyrarchEntity;
-import com.hp.zephyrarch.registry.ModRegistry;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
@@ -42,7 +40,6 @@ public final class ZephyrarchCombatEvents {
         int duration = ZephyrarchConfig.ANTI_HEAL_DURATION_TICKS.get();
         long until = victim.level().getGameTime() + duration;
         victim.getPersistentData().putLong(NBT_ANTI_HEAL_UNTIL, until);
-        victim.addEffect(new MobEffectInstance(ModRegistry.GALE_SEVERANCE, duration, 0, false, true, true), boss);
         LOGGER.debug("Zephyrarch [id={}] applied anti-heal to non-player entity {} for {} ticks", boss.getId(), victim.getName().getString(), duration);
     }
 
@@ -151,10 +148,9 @@ public final class ZephyrarchCombatEvents {
         if (entity instanceof Player) {
             return;
         }
-        boolean hasEffect = entity.hasEffect(ModRegistry.GALE_SEVERANCE);
         boolean hasNbtLock = ZephyrarchConfig.CRICKET_MODE_ENABLED.get()
                 && entity.getPersistentData().getLong(NBT_ANTI_HEAL_UNTIL) > entity.level().getGameTime();
-        if (hasEffect || hasNbtLock) {
+        if (hasNbtLock) {
             event.setAmount(0.0F);
             event.setCanceled(true);
         }

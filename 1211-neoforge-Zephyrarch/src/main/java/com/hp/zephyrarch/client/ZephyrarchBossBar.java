@@ -24,13 +24,13 @@ import java.util.UUID;
 public final class ZephyrarchBossBar {
     private static final ResourceLocation TEX = ResourceLocation.fromNamespaceAndPath(Zephyrarch.MOD_ID, "textures/gui/zephyrarch_bossbar.png");
     private static final int TW = 256;
-    private static final int TH = 64;
-    private static final int W = 224;
-    private static final int H = 24;
-    private static final int WIN_X = 20;
-    private static final int WIN_Y = 9;
-    private static final int WIN_W = 186;
-    private static final int WIN_H = 6;
+    private static final int TH = 96;
+    private static final int W = 210;
+    private static final int H = 28;
+    private static final int WIN_X = 14;
+    private static final int WIN_Y = 11;
+    private static final int WIN_W = 182;
+    private static final int WIN_H = 5;
     private static final int TILE = 128;
 
     private static final float CHIP_HOLD = 10.0F;
@@ -48,7 +48,7 @@ public final class ZephyrarchBossBar {
             return;
         }
         event.setCanceled(true);
-        event.setIncrement(H + 10);
+        event.setIncrement(H + 11);
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) {
@@ -87,7 +87,7 @@ public final class ZephyrarchBossBar {
         float rebirthFlash = 1.0F - Mth.clamp((time - s[6]) / 18.0F, 0.0F, 1.0F);
 
         int x = g.guiWidth() / 2 - W / 2;
-        int y = event.getY();
+        int y = event.getY() + 3;
         int wx = x + WIN_X;
         int wy = y + WIN_Y;
         int fw = Math.round(WIN_W * p);
@@ -96,42 +96,41 @@ public final class ZephyrarchBossBar {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        tile(g, wx, wy, 42, WIN_W, 0);
+        g.blit(TEX, wx, wy, 0, 58, WIN_W, WIN_H, TW, TH);
 
         if (cw > fw) {
-            float k = time < s[2] ? 1.0F : 0.72F;
-            g.fill(wx + fw, wy, wx + cw, wy + 1, argb(k, 255, 244, 196));
-            g.fill(wx + fw, wy + 1, wx + cw, wy + WIN_H - 1, argb(k, 240, 168, 56));
-            g.fill(wx + fw, wy + WIN_H - 1, wx + cw, wy + WIN_H, argb(k, 196, 108, 34));
+            float k = time < s[2] ? 1.0F : 0.76F;
+            g.fill(wx + fw, wy, wx + cw, wy + 1, argb(k, 255, 242, 214));
+            g.fill(wx + fw, wy + 1, wx + cw, wy + 2, argb(k, 246, 154, 76));
+            g.fill(wx + fw, wy + 2, wx + cw, wy + 4, argb(k, 224, 108, 50));
+            g.fill(wx + fw, wy + 4, wx + cw, wy + WIN_H, argb(k, 152, 58, 28));
         }
 
-        int scrollSpeed = phase2 ? (int) (time * 0.85F) % TILE : (int) (time * 0.45F) % TILE;
-        int barV = phase2 ? 34 : 26;
-        tile(g, wx, wy, barV, fw, scrollSpeed);
+        int scrollOff = phase2 ? (int) (time * 0.85F) % TILE : (int) (time * 0.45F) % TILE;
+        int barV = phase2 ? 72 : 65;
+        tile(g, wx, wy, barV, fw, scrollOff);
 
         if (hurtFlash > 0.0F && fw > 0) {
-            g.fill(wx, wy, wx + fw, wy + WIN_H, argb(0.55F * hurtFlash, 232, 254, 255));
+            g.fill(wx, wy, wx + fw, wy + WIN_H, argb(0.55F * hurtFlash, 236, 254, 255));
         }
         if (rebirthFlash > 0.0F && fw > 0) {
-            g.fill(wx, wy, wx + fw, wy + WIN_H, argb(0.65F * rebirthFlash, 255, 244, 176));
+            g.fill(wx, wy, wx + fw, wy + WIN_H, argb(0.68F * rebirthFlash, 255, 246, 184));
         }
-
-        g.blit(TEX, x, y, 0, 0, W, H, TW, TH);
-
-        int emblemU = phase2 ? 146 : 132;
-        g.blit(TEX, x + 6, y + 6, emblemU, 26, 11, 12, TW, TH);
 
         if (fw > 0 && fw < WIN_W) {
             int frame = ((int) (time / (phase2 ? 2.0F : 3.5F))) & 1;
-            int edgeU = phase2 ? (frame == 0 ? 176 : 184) : (frame == 0 ? 160 : 168);
-            g.blit(TEX, wx + fw - 3, y + 7, edgeU, 26, 6, 10, TW, TH);
+            int edgeU = phase2 ? (frame == 0 ? 152 : 160) : (frame == 0 ? 136 : 144);
+            g.blit(TEX, wx + fw - 2, wy - 2, edgeU, 64, 5, 9, TW, TH);
         }
+
+        int overlayV = phase2 ? 28 : 0;
+        g.blit(TEX, x, y, 0, overlayV, W, H, TW, TH);
 
         RenderSystem.disableBlend();
 
         Component name = boss.getName();
         int textColor = phase2 ? 0xFFFFECA6 : 0xFFD6F6FF;
-        g.drawString(mc.font, name, g.guiWidth() / 2 - mc.font.width(name) / 2, y - 6, textColor, true);
+        g.drawString(mc.font, name, g.guiWidth() / 2 - mc.font.width(name) / 2, event.getY() - 6, textColor, true);
     }
 
     private static void tile(GuiGraphics g, int x, int y, int v, int width, int off) {
