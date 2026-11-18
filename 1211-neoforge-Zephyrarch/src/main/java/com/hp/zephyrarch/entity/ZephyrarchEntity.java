@@ -134,7 +134,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     private final Set<Integer> rushHit = new HashSet<>();
     private Vec3 hammerTarget = Vec3.ZERO;
     private int grabbedId = -1;
-    private float grabDamageTaken;
     private final List<Vec3> stormEyeMarks = new ArrayList<>();
     private Vec3 lanceDir = Vec3.ZERO;
     private double lanceLength = LANCE_RANGE;
@@ -359,14 +358,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             }
         } else {
             result = super.hurt(source, amount);
-        }
-        if (result && this.grabbedId >= 0 && getAttack() == ZephyrarchAttack.GALE_GRAB) {
-            this.grabDamageTaken += amount;
-            if (this.grabDamageTaken >= this.getMaxHealth() * ZephyrarchConfig.GRAB_RELEASE_RATIO.get()) {
-                releaseGrab();
-                startAttack(ZephyrarchAttack.STAGGER);
-                playBossSound(ModSounds.STAGGER.get(), 1.6F, 1.0F);
-            }
         }
         return result;
     }
@@ -881,7 +872,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 return;
             }
             this.grabbedId = caught.getId();
-            this.grabDamageTaken = 0.0F;
             playBossSound(ModSounds.GRAB_CATCH.get(), 1.8F, 1.0F);
         }
         Entity held = this.grabbedId >= 0 ? level.getEntity(this.grabbedId) : null;
@@ -940,7 +930,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
 
     private void releaseGrab() {
         this.grabbedId = -1;
-        this.grabDamageTaken = 0.0F;
     }
 
     /** 6. 旋涡踏震：8–28 吸引，第 30 tick 冲击。 */

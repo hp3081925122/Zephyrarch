@@ -162,8 +162,8 @@ public final class SovereignGauntletItem extends SwordItem implements GeoItem {
             long animId = GeoItem.getOrAssignId(stack, serverLevel);
             triggerAnim(player, animId, "action", "strike");
 
-            float atk = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-            ZephyrChargeEntity charge = new ZephyrChargeEntity(serverLevel, player, Math.max(7.0F, atk * 0.90F));
+            ZephyrChargeEntity charge = new ZephyrChargeEntity(serverLevel, player)
+                    .configure(0.90D, 2.2D, 0.50D, 60, 1.0F);
             charge.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, 1.60F, 0.4F);
             serverLevel.addFreshEntity(charge);
             serverLevel.sendParticles(ParticleTypes.GUST, player.getX(), player.getY() + 0.9D, player.getZ(), 2, 0.3D, 0.2D, 0.3D, 0.0D);

@@ -1,15 +1,15 @@
 package com.hp.zephyrarch.registry;
 
 import com.hp.zephyrarch.Zephyrarch;
-import com.hp.zephyrarch.effect.GaleSeveranceEffect;
+import com.hp.zephyrarch.entity.ZephyrBladeEntity;
 import com.hp.zephyrarch.entity.ZephyrChargeEntity;
+import com.hp.zephyrarch.entity.ZephyrTwisterEntity;
 import com.hp.zephyrarch.entity.ZephyrarchEntity;
 import com.hp.zephyrarch.item.DescItem;
 import com.hp.zephyrarch.item.SovereignGauntletItem;
 import com.hp.zephyrarch.item.TempestCrestItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.CreativeModeTab;
@@ -24,7 +24,6 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class ModRegistry {
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(Registries.ENTITY_TYPE, Zephyrarch.MOD_ID);
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(Registries.ITEM, Zephyrarch.MOD_ID);
-    public static final DeferredRegister<MobEffect> EFFECTS = DeferredRegister.create(Registries.MOB_EFFECT, Zephyrarch.MOD_ID);
     public static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Zephyrarch.MOD_ID);
 
     public static final DeferredHolder<EntityType<?>, EntityType<ZephyrarchEntity>> ZEPHYRARCH = ENTITIES.register("zephyrarch",
@@ -41,7 +40,19 @@ public final class ModRegistry {
                     .updateInterval(1)
                     .build(Zephyrarch.MOD_ID + ":zephyr_charge"));
 
-    public static final DeferredHolder<MobEffect, MobEffect> GALE_SEVERANCE = EFFECTS.register("gale_severance", GaleSeveranceEffect::new);
+    public static final DeferredHolder<EntityType<?>, EntityType<ZephyrBladeEntity>> ZEPHYR_BLADE = ENTITIES.register("zephyr_blade",
+            () -> EntityType.Builder.<ZephyrBladeEntity>of(ZephyrBladeEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 0.4F)
+                    .clientTrackingRange(10)
+                    .updateInterval(1)
+                    .build(Zephyrarch.MOD_ID + ":zephyr_blade"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ZephyrTwisterEntity>> ZEPHYR_TWISTER = ENTITIES.register("zephyr_twister",
+            () -> EntityType.Builder.<ZephyrTwisterEntity>of(ZephyrTwisterEntity::new, MobCategory.MISC)
+                    .sized(1.4F, 2.8F)
+                    .clientTrackingRange(10)
+                    .updateInterval(1)
+                    .build(Zephyrarch.MOD_ID + ":zephyr_twister"));
 
     public static final DeferredHolder<Item, Item> ZEPHYRARCH_SPAWN_EGG = ITEMS.register("zephyrarch_spawn_egg",
             () -> new DeferredSpawnEggItem(ZEPHYRARCH, 0x576C9D, 0x8AE6FF, new Item.Properties()));

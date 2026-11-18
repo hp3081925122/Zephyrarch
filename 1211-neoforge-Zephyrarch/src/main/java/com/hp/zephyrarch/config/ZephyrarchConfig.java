@@ -20,7 +20,6 @@ public final class ZephyrarchConfig {
     public static final ModConfigSpec.DoubleValue HAMMER_CENTER_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue HAMMER_EDGE_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue GRAB_SQUEEZE_MULTIPLIER;
-    public static final ModConfigSpec.DoubleValue GRAB_RELEASE_RATIO;
     public static final ModConfigSpec.DoubleValue STOMP_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue PHASE_SHIFT_BURST_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue BOLT_MULTIPLIER;
@@ -81,9 +80,6 @@ public final class ZephyrarchConfig {
         HAMMER_CENTER_MULTIPLIER = mult(builder, "hammerCenterMultiplier", "天坠锤击中心 1.5 格 / Sky Hammer center", 1.8D);
         HAMMER_EDGE_MULTIPLIER = mult(builder, "hammerEdgeMultiplier", "天坠锤击外圈 / Sky Hammer outer ring", 0.9D);
         GRAB_SQUEEZE_MULTIPLIER = mult(builder, "grabSqueezeMultiplier", "擒风摔投每次挤压 / Gale Grab squeeze per pulse", 0.2D);
-        GRAB_RELEASE_RATIO = builder
-                .comment("擒风摔投期间受到多少比例最大生命值的伤害会松手 / Damage ratio of max health that makes Gale Grab release")
-                .defineInRange("grabReleaseRatio", 0.04D, 0.0D, 1.0D);
         STOMP_MULTIPLIER = mult(builder, "stompMultiplier", "旋涡踏震冲击 / Vortex Stomp burst", 1.5D);
         PHASE_SHIFT_BURST_MULTIPLIER = mult(builder, "phaseShiftBurstMultiplier", "风暴相变爆发 / Phase Shift burst", 0.8D);
         BOLT_MULTIPLIER = mult(builder, "boltMultiplier", "风弹连射每颗 / Gale Bolts per bolt", 0.45D);
