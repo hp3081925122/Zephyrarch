@@ -687,11 +687,11 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             this.setDeltaMovement(lunge.x, this.getDeltaMovement().y, lunge.z);
         }
         if (t == 11) {
-            strikeArc(level, 3.9D, 0.707D, ZephyrarchConfig.COMBO_FIRST_MULTIPLIER.get(), 0.4D, 0.12D);
-            playBossSound(ModSounds.PUNCH_IMPACT.get(), 1.6F, 1.05F);
+            int hits = strikeArc(level, 3.9D, 0.707D, ZephyrarchConfig.COMBO_FIRST_MULTIPLIER.get(), 0.4D, 0.12D);
+            playBossSound(ModSounds.PUNCH_IMPACT.get(), hits > 0 ? 1.85F : 1.45F, 1.05F);
         } else if (t == 23) {
-            strikeArc(level, 4.4D, 0.64D, ZephyrarchConfig.COMBO_SECOND_MULTIPLIER.get(), 0.6D, 0.2D);
-            playBossSound(ModSounds.PUNCH_IMPACT.get(), 1.8F, 0.85F);
+            int hits = strikeArc(level, 4.4D, 0.64D, ZephyrarchConfig.COMBO_SECOND_MULTIPLIER.get(), 0.6D, 0.2D);
+            playBossSound(ModSounds.PUNCH_IMPACT.get(), hits > 0 ? 2.15F : 1.65F, 0.86F);
         }
     }
 
@@ -791,6 +791,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             }
             level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, c.x, c.y + 0.25D, c.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
             playBossSound(ModSounds.HAMMER_SLAM.get(), 2.6F, 1.0F);
+            playBossSound(SoundEvents.MACE_SMASH_GROUND_HEAVY, 1.35F, 0.85F);
         }
     }
 
@@ -901,7 +902,8 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 applyScaledAttack(victim, ZephyrarchConfig.STOMP_MULTIPLIER.get(), 1.4D, 0.5D);
             }
             level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, getX(), getY() + 0.5D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
-            playBossSound(ModSounds.STOMP_BURST.get(), 2.4F, 1.0F);
+            playBossSound(ModSounds.STOMP_BURST.get(), 2.5F, 1.0F);
+            playBossSound(SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), 1.4F, 0.72F);
         }
     }
 
@@ -910,6 +912,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         this.setDeltaMovement(0.0D, 0.02D, 0.0D);
         if (this.attackTick == 21) {
             level.sendParticles(ParticleTypes.FLASH, getX(), getY() + 1.8D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
+            playBossSound(SoundEvents.WARDEN_SONIC_BOOM, 1.35F, 1.38F);
             for (LivingEntity victim : victimsAround(level, position(), 6.0D, 1.5D, 4.0D)) {
                 applyScaledAttack(victim, ZephyrarchConfig.PHASE_SHIFT_BURST_MULTIPLIER.get(), 2.0D, 0.3D);
             }
@@ -980,6 +983,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             }
             ZephyrWorldVfxPayload.sendPoint(this, ZephyrWorldVfxPayload.KIND_CHARGE_BURST, end, 1.75F, 11);
             playBossSound(ModSounds.LANCE_FIRE.get(), 2.6F, 1.0F);
+            playBossSound(SoundEvents.WARDEN_SONIC_BOOM, 1.15F, 1.48F);
         }
         if (t == 44) {
             this.entityData.set(DATA_LANCE_STATE, 0);

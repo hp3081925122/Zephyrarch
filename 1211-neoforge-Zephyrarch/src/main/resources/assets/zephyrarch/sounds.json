@@ -2,177 +2,138 @@
   "punch_swing": {
     "subtitle": "subtitles.zephyrarch.punch_swing",
     "sounds": [
-      {
-        "name": "zephyrarch:punch_swing"
-      }
+      { "name": "zephyrarch:punch_swing", "attenuation_distance": 32, "pitch": 0.96 },
+      { "name": "zephyrarch:punch_swing", "attenuation_distance": 32, "pitch": 1.04 }
     ]
   },
   "punch_impact": {
     "subtitle": "subtitles.zephyrarch.punch_impact",
     "sounds": [
-      {
-        "name": "zephyrarch:punch_impact"
-      }
+      { "name": "zephyrarch:punch_impact", "attenuation_distance": 38, "pitch": 0.95 },
+      { "name": "zephyrarch:punch_impact", "attenuation_distance": 38, "pitch": 1.03 }
     ]
   },
   "sweep_spin": {
     "subtitle": "subtitles.zephyrarch.sweep_spin",
     "sounds": [
-      {
-        "name": "zephyrarch:sweep_spin"
-      }
+      { "name": "zephyrarch:sweep_spin", "attenuation_distance": 40 }
     ]
   },
   "rush_charge": {
     "subtitle": "subtitles.zephyrarch.rush_charge",
     "sounds": [
-      {
-        "name": "zephyrarch:rush_charge"
-      }
+      { "name": "zephyrarch:rush_charge", "attenuation_distance": 36 }
     ]
   },
   "rush_dash": {
     "subtitle": "subtitles.zephyrarch.rush_dash",
     "sounds": [
-      {
-        "name": "zephyrarch:rush_dash"
-      }
+      { "name": "zephyrarch:rush_dash", "attenuation_distance": 42 }
     ]
   },
   "hammer_rise": {
     "subtitle": "subtitles.zephyrarch.hammer_rise",
     "sounds": [
-      {
-        "name": "zephyrarch:hammer_rise"
-      }
+      { "name": "zephyrarch:hammer_rise", "attenuation_distance": 38 }
     ]
   },
   "hammer_slam": {
     "subtitle": "subtitles.zephyrarch.hammer_slam",
     "sounds": [
-      {
-        "name": "zephyrarch:hammer_slam"
-      }
+      { "name": "zephyrarch:hammer_slam", "attenuation_distance": 48 }
     ]
   },
   "grab_catch": {
     "subtitle": "subtitles.zephyrarch.grab_catch",
     "sounds": [
-      {
-        "name": "zephyrarch:grab_catch"
-      }
+      { "name": "zephyrarch:grab_catch", "attenuation_distance": 32 }
     ]
   },
   "grab_throw": {
     "subtitle": "subtitles.zephyrarch.grab_throw",
     "sounds": [
-      {
-        "name": "zephyrarch:grab_throw"
-      }
+      { "name": "zephyrarch:grab_throw", "attenuation_distance": 38 }
     ]
   },
   "stomp_pull": {
     "subtitle": "subtitles.zephyrarch.stomp_pull",
     "sounds": [
-      {
-        "name": "zephyrarch:stomp_pull"
-      }
+      { "name": "zephyrarch:stomp_pull", "attenuation_distance": 40 }
     ]
   },
   "stomp_burst": {
     "subtitle": "subtitles.zephyrarch.stomp_burst",
     "sounds": [
-      {
-        "name": "zephyrarch:stomp_burst"
-      }
+      { "name": "zephyrarch:stomp_burst", "attenuation_distance": 48 }
     ]
   },
   "phase_shift": {
     "subtitle": "subtitles.zephyrarch.phase_shift",
     "sounds": [
-      {
-        "name": "zephyrarch:phase_shift"
-      }
+      { "name": "zephyrarch:phase_shift", "attenuation_distance": 56 }
     ]
   },
   "wind_dash": {
     "subtitle": "subtitles.zephyrarch.wind_dash",
     "sounds": [
-      {
-        "name": "zephyrarch:wind_dash"
-      }
+      { "name": "zephyrarch:wind_dash", "attenuation_distance": 36, "pitch": 0.96 },
+      { "name": "zephyrarch:wind_dash", "attenuation_distance": 36, "pitch": 1.05 }
     ]
   },
   "stagger": {
     "subtitle": "subtitles.zephyrarch.stagger",
     "sounds": [
-      {
-        "name": "zephyrarch:stagger"
-      }
+      { "name": "zephyrarch:stagger", "attenuation_distance": 36 }
     ]
   },
   "bolt_shoot": {
     "subtitle": "subtitles.zephyrarch.bolt_shoot",
     "sounds": [
-      {
-        "name": "zephyrarch:bolt_shoot"
-      }
+      { "name": "zephyrarch:bolt_shoot", "attenuation_distance": 38, "pitch": 0.95 },
+      { "name": "zephyrarch:bolt_shoot", "attenuation_distance": 38, "pitch": 1.05 }
     ]
   },
   "lance_charge": {
     "subtitle": "subtitles.zephyrarch.lance_charge",
     "sounds": [
-      {
-        "name": "zephyrarch:lance_charge"
-      }
+      { "name": "zephyrarch:lance_charge", "attenuation_distance": 48 }
     ]
   },
   "lance_fire": {
     "subtitle": "subtitles.zephyrarch.lance_fire",
     "sounds": [
-      {
-        "name": "zephyrarch:lance_fire"
-      }
+      { "name": "zephyrarch:lance_fire", "attenuation_distance": 52 }
     ]
   },
   "twister_spawn": {
     "subtitle": "subtitles.zephyrarch.twister_spawn",
     "sounds": [
-      {
-        "name": "zephyrarch:twister_spawn"
-      }
+      { "name": "zephyrarch:twister_spawn", "attenuation_distance": 38 }
     ]
   },
   "downdraft_impact": {
     "subtitle": "subtitles.zephyrarch.downdraft_impact",
     "sounds": [
-      {
-        "name": "zephyrarch:downdraft_impact"
-      }
+      { "name": "zephyrarch:downdraft_impact", "attenuation_distance": 42, "pitch": 0.94 },
+      { "name": "zephyrarch:downdraft_impact", "attenuation_distance": 42, "pitch": 1.04 }
     ]
   },
   "blade_throw": {
     "subtitle": "subtitles.zephyrarch.blade_throw",
     "sounds": [
-      {
-        "name": "zephyrarch:blade_throw"
-      }
+      { "name": "zephyrarch:blade_throw", "attenuation_distance": 40 }
     ]
   },
   "cage_form": {
     "subtitle": "subtitles.zephyrarch.cage_form",
     "sounds": [
-      {
-        "name": "zephyrarch:cage_form"
-      }
+      { "name": "zephyrarch:cage_form", "attenuation_distance": 52 }
     ]
   },
   "orb_shoot": {
     "subtitle": "subtitles.zephyrarch.orb_shoot",
     "sounds": [
-      {
-        "name": "zephyrarch:orb_shoot"
-      }
+      { "name": "zephyrarch:orb_shoot", "attenuation_distance": 42 }
     ]
   }
 }
