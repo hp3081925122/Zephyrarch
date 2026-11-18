@@ -1,5 +1,6 @@
 package com.hp.zephyrarch.config;
 
+import com.hp.zephyrarch.entity.ZephyrarchAttack;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class ZephyrarchConfig {
@@ -11,14 +12,28 @@ public final class ZephyrarchConfig {
     public static final ModConfigSpec.DoubleValue MOVEMENT_SPEED;
     public static final ModConfigSpec.DoubleValue FOLLOW_RANGE;
 
-    public static final ModConfigSpec.DoubleValue COMBO_PUNCH_MULTIPLIER;
-    public static final ModConfigSpec.DoubleValue COMBO_FINISHER_MULTIPLIER;
-    public static final ModConfigSpec.DoubleValue TEMPEST_SLAM_MULTIPLIER;
-    public static final ModConfigSpec.DoubleValue GALE_CHARGE_MULTIPLIER;
-    public static final ModConfigSpec.DoubleValue CYCLONE_TICK_MULTIPLIER;
-    public static final ModConfigSpec.DoubleValue CYCLONE_BURST_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue COMBO_FIRST_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue COMBO_SECOND_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue ARM_SWEEP_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue RUSH_PATH_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue RUSH_FINISH_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue HAMMER_CENTER_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue HAMMER_EDGE_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue GRAB_SQUEEZE_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue GRAB_RELEASE_RATIO;
+    public static final ModConfigSpec.DoubleValue STOMP_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue PHASE_SHIFT_BURST_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue BOLT_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue LANCE_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue TWISTER_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue DOWNDRAFT_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue BLADE_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue CAGE_WALL_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue CAGE_ORB_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue CAGE_HEALTH_RATIO;
+    public static final ModConfigSpec.DoubleValue HOVER_HEIGHT;
     public static final ModConfigSpec.DoubleValue KNOCKBACK_SCALE;
+    private static final ModConfigSpec.IntValue[] COOLDOWNS = new ModConfigSpec.IntValue[ZephyrarchAttack.values().length];
 
     public static final ModConfigSpec.BooleanValue CRICKET_MODE_ENABLED;
     public static final ModConfigSpec.DoubleValue NON_PLAYER_DAMAGE_CAP_RATIO;
@@ -47,7 +62,7 @@ public final class ZephyrarchConfig {
 
         MOVEMENT_SPEED = builder
                 .comment("罡风君主基础移动速度 / Base movement speed of Zephyrarch")
-                .defineInRange("movementSpeed", 0.29D, 0.05D, 1.0D);
+                .defineInRange("movementSpeed", 0.32D, 0.05D, 1.0D);
 
         FOLLOW_RANGE = builder
                 .comment("罡风君主索敌追踪距离 / Follow range of Zephyrarch")
@@ -55,41 +70,56 @@ public final class ZephyrarchConfig {
 
         builder.pop();
 
-        builder.comment("罡风君主战斗与技能倍率配置 (第一条命死亡回满血进入二阶段，无三阶段) / Combat and skill damage multipliers (Phase 1 fatal blow restores full HP and enters Phase 2, no Phase 3)")
+        builder.comment("罡风君主技能伤害倍率 (第一条命死亡后回满血进入二阶段：一阶段只用近战，二阶段只用远程) / Skill damage multipliers (Phase 1 fatal blow restores full HP and enters Phase 2; Phase 1 is melee only, Phase 2 is ranged only)")
                 .push("combat");
 
-        COMBO_PUNCH_MULTIPLIER = builder
-                .comment("连环重拳第一击伤害倍率 / Damage multiplier for the first strike of Combo Punch")
-                .defineInRange("comboPunchMultiplier", 1.00D, 0.10D, 10.0D);
-
-        COMBO_FINISHER_MULTIPLIER = builder
-                .comment("连环重拳第二击横扫伤害倍率 / Damage multiplier for the second sweep strike of Combo Punch")
-                .defineInRange("comboFinisherMultiplier", 1.25D, 0.10D, 10.0D);
-
-        TEMPEST_SLAM_MULTIPLIER = builder
-                .comment("裂空震地重砸范围伤害倍率 / Damage multiplier for Tempest Slam shockwave")
-                .defineInRange("tempestSlamMultiplier", 1.45D, 0.10D, 10.0D);
-
-        GALE_CHARGE_MULTIPLIER = builder
-                .comment("罡风爆弹命中伤害倍率 / Damage multiplier for Zephyr Charge projectile")
-                .defineInRange("galeChargeMultiplier", 0.85D, 0.10D, 10.0D);
-
-        CYCLONE_TICK_MULTIPLIER = builder
-                .comment("暴风眼牵引期间每段切割风伤倍率 / Damage multiplier per pulse during Cyclone Vortex pull")
-                .defineInRange("cycloneTickMultiplier", 0.35D, 0.05D, 5.0D);
-
-        CYCLONE_BURST_MULTIPLIER = builder
-                .comment("暴风眼终段破空脉冲爆发伤害倍率 / Damage multiplier for Cyclone Vortex final burst")
-                .defineInRange("cycloneBurstMultiplier", 1.60D, 0.10D, 10.0D);
-
-        PHASE_SHIFT_BURST_MULTIPLIER = builder
-                .comment("第一条命死亡满血觉醒二阶段时的风暴震波伤害倍率 / Damage multiplier for Phase 2 rebirth storm burst")
-                .defineInRange("phaseShiftBurstMultiplier", 1.25D, 0.10D, 10.0D);
+        COMBO_FIRST_MULTIPLIER = mult(builder, "comboFirstMultiplier", "裂风连拳第一拳 / Gale Combo first punch", 1.0D);
+        COMBO_SECOND_MULTIPLIER = mult(builder, "comboSecondMultiplier", "裂风连拳第二拳 / Gale Combo second punch", 1.3D);
+        ARM_SWEEP_MULTIPLIER = mult(builder, "armSweepMultiplier", "旋臂横扫 / Arm Sweep", 1.2D);
+        RUSH_PATH_MULTIPLIER = mult(builder, "rushPathMultiplier", "罡风冲拳冲刺路径 / Gale Rush dash path", 1.4D);
+        RUSH_FINISH_MULTIPLIER = mult(builder, "rushFinishMultiplier", "罡风冲拳终点拳 / Gale Rush finishing punch", 0.8D);
+        HAMMER_CENTER_MULTIPLIER = mult(builder, "hammerCenterMultiplier", "天坠锤击中心 1.5 格 / Sky Hammer center", 1.8D);
+        HAMMER_EDGE_MULTIPLIER = mult(builder, "hammerEdgeMultiplier", "天坠锤击外圈 / Sky Hammer outer ring", 0.9D);
+        GRAB_SQUEEZE_MULTIPLIER = mult(builder, "grabSqueezeMultiplier", "擒风摔投每次挤压 / Gale Grab squeeze per pulse", 0.2D);
+        GRAB_RELEASE_RATIO = builder
+                .comment("擒风摔投期间受到多少比例最大生命值的伤害会松手 / Damage ratio of max health that makes Gale Grab release")
+                .defineInRange("grabReleaseRatio", 0.04D, 0.0D, 1.0D);
+        STOMP_MULTIPLIER = mult(builder, "stompMultiplier", "旋涡踏震冲击 / Vortex Stomp burst", 1.5D);
+        PHASE_SHIFT_BURST_MULTIPLIER = mult(builder, "phaseShiftBurstMultiplier", "风暴相变爆发 / Phase Shift burst", 0.8D);
+        BOLT_MULTIPLIER = mult(builder, "boltMultiplier", "风弹连射每颗 / Gale Bolts per bolt", 0.45D);
+        LANCE_MULTIPLIER = mult(builder, "lanceMultiplier", "罡风长枪 / Tempest Lance", 2.0D);
+        TWISTER_MULTIPLIER = mult(builder, "twisterMultiplier", "风暴之眼小龙卷接触 / Storm Eye twister contact", 0.35D);
+        DOWNDRAFT_MULTIPLIER = mult(builder, "downdraftMultiplier", "天压风柱每根 / Downdraft per column", 0.9D);
+        BLADE_MULTIPLIER = mult(builder, "bladeMultiplier", "回旋风刃每次 / Boomerang Blades per hit", 0.7D);
+        CAGE_WALL_MULTIPLIER = mult(builder, "cageWallMultiplier", "气旋囚笼风墙 / Cyclone Cage wall", 0.6D);
+        CAGE_ORB_MULTIPLIER = mult(builder, "cageOrbMultiplier", "气旋囚笼风暴球 / Cyclone Cage storm orb", 1.1D);
+        CAGE_HEALTH_RATIO = builder
+                .comment("二阶段血量低于该比例才会使用气旋囚笼 / Cyclone Cage is unlocked below this Phase 2 health ratio")
+                .defineInRange("cageHealthRatio", 0.35D, 0.0D, 1.0D);
+        HOVER_HEIGHT = builder
+                .comment("二阶段悬浮离地高度 (格) / Phase 2 hover height in blocks")
+                .defineInRange("hoverHeight", 1.5D, 0.0D, 6.0D);
 
         KNOCKBACK_SCALE = builder
                 .comment("技能击退力度全局缩放系数 (实际击退还会受目标击退抗性减免) / Global knockback scale for skills (actual knockback is also reduced by target knockback resistance)")
                 .defineInRange("knockbackScale", 1.00D, 0.0D, 3.0D);
 
+        builder.pop();
+
+        builder.comment("技能冷却 (刻，20 刻 = 1 秒) / Skill cooldowns in ticks").push("cooldowns");
+        cd(builder, ZephyrarchAttack.GALE_COMBO, "galeCombo", 60);
+        cd(builder, ZephyrarchAttack.ARM_SWEEP, "armSweep", 100);
+        cd(builder, ZephyrarchAttack.GALE_RUSH, "galeRush", 120);
+        cd(builder, ZephyrarchAttack.SKY_HAMMER, "skyHammer", 140);
+        cd(builder, ZephyrarchAttack.GALE_GRAB, "galeGrab", 160);
+        cd(builder, ZephyrarchAttack.VORTEX_STOMP, "vortexStomp", 140);
+        cd(builder, ZephyrarchAttack.GALE_BOLTS, "galeBolts", 80);
+        cd(builder, ZephyrarchAttack.TEMPEST_LANCE, "tempestLance", 140);
+        cd(builder, ZephyrarchAttack.STORM_EYE, "stormEye", 220);
+        cd(builder, ZephyrarchAttack.DOWNDRAFT, "downdraft", 180);
+        cd(builder, ZephyrarchAttack.BOOMERANG_BLADES, "boomerangBlades", 120);
+        cd(builder, ZephyrarchAttack.CYCLONE_CAGE, "cycloneCage", 600);
+        cd(builder, ZephyrarchAttack.WIND_DASH, "windDash", 60);
         builder.pop();
 
         builder.comment("斗蛐蛐模式配置 (非玩家限伤、对非玩家禁疗、周围无生存玩家时高频出招) / Cricket (Mob Arena) mode settings (non-player damage cap, anti-heal on non-players, rapid attack frequency without survival players nearby)")
@@ -122,6 +152,20 @@ public final class ZephyrarchConfig {
         builder.pop();
 
         SPEC = builder.build();
+    }
+
+    private static ModConfigSpec.DoubleValue mult(ModConfigSpec.Builder b, String key, String name, double def) {
+        return b.comment(name + " 伤害倍率 (乘以基础攻击力) / damage multiplier (times base attack damage)")
+                .defineInRange(key, def, 0.0D, 20.0D);
+    }
+
+    private static void cd(ModConfigSpec.Builder b, ZephyrarchAttack attack, String key, int def) {
+        COOLDOWNS[attack.id] = b.defineInRange(key, def, 0, 12000);
+    }
+
+    public static int cooldown(ZephyrarchAttack attack) {
+        ModConfigSpec.IntValue v = COOLDOWNS[attack.id];
+        return v == null ? 0 : v.get();
     }
 
     private ZephyrarchConfig() {

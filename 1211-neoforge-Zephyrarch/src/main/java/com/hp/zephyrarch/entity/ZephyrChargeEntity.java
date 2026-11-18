@@ -5,6 +5,8 @@ import com.hp.zephyrarch.event.ZephyrarchCombatEvents;
 import com.hp.zephyrarch.registry.ModRegistry;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -34,44 +36,94 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 
+/**
+ * 罡风君主的风元素投射物。风弹连射（直线）和气旋囚笼的风暴球（缓慢追踪、可被打掉）共用这一个类，
+ * 由 {@link #configure} 设定伤害、爆炸半径、寿命和追踪参数。
+ */
 public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
     private static final RawAnimation SPIN = RawAnimation.begin().thenLoop("animation.zephyr_charge.spin");
+    private static final EntityDataAccessor<Float> DATA_SCALE = SynchedEntityData.defineId(ZephyrChargeEntity.class, EntityDataSerializers.FLOAT);
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     public final Deque<Vec3> clientTrail = new ArrayDeque<>(12);
-    private float baseDamage = 8.0F;
+    private double damageMultiplier = 0.45D;
+    private double blastRadius = 1.6D;
+    private double knockback = 0.5D;
+    private int maxLife = 40;
     private int life;
+    private int homingTargetId = -1;
+    private float turnRateDeg;
+    private boolean hittable;
 
     public ZephyrChargeEntity(EntityType<? extends ZephyrChargeEntity> type, Level level) {
         super(type, level);
-        this.noPhysics = false;
     }
 
-    public ZephyrChargeEntity(Level level, LivingEntity shooter, float baseDamage) {
+    public ZephyrChargeEntity(Level level, LivingEntity shooter) {
         this(ModRegistry.ZEPHYR_CHARGE.get(), level);
         setOwner(shooter);
-        this.baseDamage = baseDamage;
         setPos(shooter.getX(), shooter.getEyeY() - 0.25D, shooter.getZ());
+    }
+
+    public ZephyrChargeEntity configure(double damageMultiplier, double blastRadius, double knockback, int maxLife, float scale) {
+        this.damageMultiplier = damageMultiplier;
+        this.blastRadius = blastRadius;
+        this.knockback = knockback;
+        this.maxLife = maxLife;
+        this.entityData.set(DATA_SCALE, scale);
+        return this;
+    }
+
+    /** 让投射物缓慢追踪目标，并且可以被玩家一击打掉。 */
+    public ZephyrChargeEntity homing(LivingEntity target, float turnRateDeg) {
+        this.homingTargetId = target.getId();
+        this.turnRateDeg = turnRateDeg;
+        this.hittable = true;
+        return this;
+    }
+
+    public float getScale() {
+        return this.entityData.get(DATA_SCALE);
     }
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_SCALE, 1.0F);
+    }
+
+    @Override
+    public boolean isNoGravity() {
+        return true;
     }
 
     @Override
     public void tick() {
         super.tick();
         life++;
-        if (life > 100) {
+        if (!level().isClientSide && life > maxLife) {
+            if (hittable) {
+                explodeBurst(null);
+            }
             discard();
             return;
+        }
+
+        if (!level().isClientSide && homingTargetId >= 0 && level().getEntity(homingTargetId) instanceof LivingEntity target && target.isAlive()) {
+            Vec3 motion = getDeltaMovement();
+            double speed = motion.length();
+            Vec3 want = target.getBoundingBox().getCenter().subtract(position()).normalize();
+            Vec3 cur = speed > 1.0E-4D ? motion.scale(1.0D / speed) : want;
+            double angle = Math.acos(Math.max(-1.0D, Math.min(1.0D, cur.dot(want))));
+            double maxTurn = Math.toRadians(turnRateDeg);
+            Vec3 next = angle <= maxTurn ? want : cur.add(want.subtract(cur).scale(maxTurn / angle)).normalize();
+            setDeltaMovement(next.scale(speed));
+            hasImpulse = true;
         }
 
         HitResult hitResult = ProjectileUtil.getHitResultOnMoveVector(this, this::canHitEntity);
         if (hitResult.getType() != HitResult.Type.MISS) {
             hitTargetOrDeflectSelf(hitResult);
         }
-
         if (isRemoved()) {
             return;
         }
@@ -90,8 +142,26 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
     }
 
     @Override
+    public boolean isPickable() {
+        return hittable;
+    }
+
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        if (hittable && !level().isClientSide && source.getEntity() instanceof Player) {
+            if (level() instanceof ServerLevel serverLevel) {
+                serverLevel.sendParticles(ParticleTypes.POOF, getX(), getY() + 0.2D, getZ(), 8, 0.2D, 0.2D, 0.2D, 0.04D);
+            }
+            playSound(SoundEvents.WIND_CHARGE_BURST.value(), 0.8F, 1.5F);
+            discard();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     protected boolean canHitEntity(Entity target) {
-        if (!super.canHitEntity(target)) {
+        if (!super.canHitEntity(target) || target instanceof ZephyrChargeEntity || target instanceof ZephyrTwisterEntity) {
             return false;
         }
         Entity owner = getOwner();
@@ -122,20 +192,16 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
         }
         Entity owner = getOwner();
         LivingEntity livingOwner = owner instanceof LivingEntity le ? le : null;
-        float computedBase = baseDamage;
-        if (livingOwner != null && livingOwner.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
-            computedBase = (float) (livingOwner.getAttributeValue(Attributes.ATTACK_DAMAGE) * ZephyrarchConfig.GALE_CHARGE_MULTIPLIER.get());
-        }
-        DamageSource source = livingOwner != null
-                ? damageSources().mobProjectile(this, livingOwner)
-                : damageSources().magic();
+        double attack = livingOwner != null && livingOwner.getAttribute(Attributes.ATTACK_DAMAGE) != null
+                ? livingOwner.getAttributeValue(Attributes.ATTACK_DAMAGE) : 12.0D;
+        float damage = (float) (attack * damageMultiplier);
+        DamageSource source = livingOwner != null ? damageSources().mobProjectile(this, livingOwner) : damageSources().magic();
 
-        serverLevel.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, getX(), getY() + 0.2D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
-        serverLevel.sendParticles(ParticleTypes.CLOUD, getX(), getY() + 0.2D, getZ(), 10, 0.35D, 0.25D, 0.35D, 0.08D);
-        serverLevel.playSound(null, getX(), getY(), getZ(), SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), SoundSource.HOSTILE, 1.2F, 0.95F + random.nextFloat() * 0.2F);
+        serverLevel.sendParticles(blastRadius > 2.0D ? ParticleTypes.GUST_EMITTER_SMALL : ParticleTypes.GUST, getX(), getY() + 0.2D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
+        serverLevel.sendParticles(ParticleTypes.CLOUD, getX(), getY() + 0.2D, getZ(), 8, 0.3D, 0.2D, 0.3D, 0.06D);
+        serverLevel.playSound(null, getX(), getY(), getZ(), SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), SoundSource.HOSTILE, 1.1F, 0.95F + random.nextFloat() * 0.2F);
 
-        double radius = 2.8D;
-        AABB area = getBoundingBox().inflate(radius);
+        AABB area = getBoundingBox().inflate(blastRadius);
         List<LivingEntity> victims = serverLevel.getEntitiesOfClass(LivingEntity.class, area, e -> e.isAlive()
                 && !(e instanceof Player p && (p.isCreative() || p.isSpectator()))
                 && (owner == null || (!e.is(owner) && !owner.isAlliedTo(e))));
@@ -143,17 +209,17 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
 
         for (LivingEntity victim : victims) {
             double dist = Math.sqrt(victim.distanceToSqr(this));
-            if (dist > radius + 0.6D && victim != directHit) {
+            if (dist > blastRadius + 0.6D && victim != directHit) {
                 continue;
             }
-            float falloff = victim == directHit ? 1.0F : (float) Math.max(0.55D, 1.0D - dist / (radius + 1.0D));
+            float falloff = victim == directHit ? 1.0F : (float) Math.max(0.5D, 1.0D - dist / (blastRadius + 1.0D));
             if (owner != null) {
                 ZephyrarchCombatEvents.applyAntiHealIfEligible(owner, victim);
             }
-            victim.hurt(source, computedBase * falloff);
+            victim.hurt(source, damage * falloff);
 
             double resist = Math.max(0.0D, 1.0D - victim.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
-            double kbStrength = 0.45D * falloff * resist * globalKb;
+            double kbStrength = knockback * falloff * resist * globalKb;
             if (kbStrength > 0.01D) {
                 Vec3 push = victim.position().subtract(position());
                 Vec3 horiz = new Vec3(push.x, 0.0D, push.z);
@@ -163,7 +229,7 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
                 if (horiz.lengthSqr() > 1.0E-4D) {
                     horiz = horiz.normalize().scale(kbStrength);
                 }
-                victim.push(horiz.x, 0.22D * resist * globalKb, horiz.z);
+                victim.push(horiz.x, 0.2D * resist * globalKb, horiz.z);
                 victim.hurtMarked = true;
             }
         }
@@ -172,17 +238,27 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
-        tag.putFloat("BaseDamage", baseDamage);
+        tag.putDouble("DamageMult", damageMultiplier);
+        tag.putDouble("BlastRadius", blastRadius);
+        tag.putDouble("Knockback", knockback);
+        tag.putInt("MaxLife", maxLife);
         tag.putInt("Life", life);
+        tag.putFloat("Scale", getScale());
+        tag.putBoolean("Hittable", hittable);
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
-        if (tag.contains("BaseDamage")) {
-            baseDamage = tag.getFloat("BaseDamage");
-        }
+        damageMultiplier = tag.getDouble("DamageMult");
+        blastRadius = tag.getDouble("BlastRadius");
+        knockback = tag.getDouble("Knockback");
+        maxLife = Math.max(1, tag.getInt("MaxLife"));
         life = tag.getInt("Life");
+        if (tag.contains("Scale")) {
+            entityData.set(DATA_SCALE, tag.getFloat("Scale"));
+        }
+        hittable = tag.getBoolean("Hittable");
     }
 
     @Override

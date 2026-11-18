@@ -2,7 +2,9 @@ package com.hp.zephyrarch.registry;
 
 import com.hp.zephyrarch.Zephyrarch;
 import com.hp.zephyrarch.effect.GaleSeveranceEffect;
+import com.hp.zephyrarch.entity.ZephyrBladeEntity;
 import com.hp.zephyrarch.entity.ZephyrChargeEntity;
+import com.hp.zephyrarch.entity.ZephyrTwisterEntity;
 import com.hp.zephyrarch.entity.ZephyrarchEntity;
 import com.hp.zephyrarch.item.DescItem;
 import com.hp.zephyrarch.item.SovereignGalebladeItem;
@@ -40,6 +42,20 @@ public final class ModRegistry {
                     .clientTrackingRange(10)
                     .updateInterval(1)
                     .build(Zephyrarch.MOD_ID + ":zephyr_charge"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ZephyrTwisterEntity>> ZEPHYR_TWISTER = ENTITIES.register("zephyr_twister",
+            () -> EntityType.Builder.<ZephyrTwisterEntity>of(ZephyrTwisterEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 2.6F)
+                    .clientTrackingRange(10)
+                    .updateInterval(2)
+                    .build(Zephyrarch.MOD_ID + ":zephyr_twister"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ZephyrBladeEntity>> ZEPHYR_BLADE = ENTITIES.register("zephyr_blade",
+            () -> EntityType.Builder.<ZephyrBladeEntity>of(ZephyrBladeEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 0.4F)
+                    .clientTrackingRange(10)
+                    .updateInterval(1)
+                    .build(Zephyrarch.MOD_ID + ":zephyr_blade"));
 
     public static final DeferredHolder<MobEffect, MobEffect> GALE_SEVERANCE = EFFECTS.register("gale_severance", GaleSeveranceEffect::new);
 

@@ -38,8 +38,7 @@ public final class SovereignGalebladeItem extends SwordItem {
         player.fallDistance = 0.0F;
 
         if (!level.isClientSide && level instanceof ServerLevel serverLevel) {
-            float atk = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-            ZephyrChargeEntity charge = new ZephyrChargeEntity(serverLevel, player, Math.max(6.0F, atk * 0.85F));
+            ZephyrChargeEntity charge = new ZephyrChargeEntity(serverLevel, player).configure(0.85D, 2.8D, 0.45D, 100, 1.0F);
             charge.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, 1.55F, 0.5F);
             serverLevel.addFreshEntity(charge);
             serverLevel.sendParticles(ParticleTypes.GUST, player.getX(), player.getY() + 0.8D, player.getZ(), 2, 0.3D, 0.2D, 0.3D, 0.0D);

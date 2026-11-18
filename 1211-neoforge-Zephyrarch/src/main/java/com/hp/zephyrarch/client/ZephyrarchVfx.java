@@ -20,13 +20,13 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 
 public final class ZephyrarchVfx {
-    private static final ResourceLocation SLASH = tex("gale_slash");
-    private static final ResourceLocation SLASH_GLOW = tex("gale_slash_glow");
-    private static final ResourceLocation RING = tex("gale_ring");
-    private static final ResourceLocation RING_GLOW = tex("gale_ring_glow");
-    private static final ResourceLocation RIBBON = tex("gale_ribbon");
-    private static final ResourceLocation RIBBON_GLOW = tex("gale_ribbon_glow");
-    private static final ResourceLocation FLARE = tex("gale_flare");
+    public static final ResourceLocation SLASH = tex("gale_slash");
+    public static final ResourceLocation SLASH_GLOW = tex("gale_slash_glow");
+    public static final ResourceLocation RING = tex("gale_ring");
+    public static final ResourceLocation RING_GLOW = tex("gale_ring_glow");
+    public static final ResourceLocation RIBBON = tex("gale_ribbon");
+    public static final ResourceLocation RIBBON_GLOW = tex("gale_ribbon_glow");
+    public static final ResourceLocation FLARE = tex("gale_flare");
 
     private ZephyrarchVfx() {
     }
@@ -35,7 +35,7 @@ public final class ZephyrarchVfx {
         return ResourceLocation.fromNamespaceAndPath(Zephyrarch.MOD_ID, "textures/effect/" + name + ".png");
     }
 
-    private static RenderType additive(ResourceLocation texture) {
+    public static RenderType additive(ResourceLocation texture) {
         return RenderType.eyes(texture);
     }
 
@@ -48,7 +48,7 @@ public final class ZephyrarchVfx {
                 .setNormal(pose, 0.0F, 1.0F, 0.0F);
     }
 
-    private static void quadTwoSided(PoseStack.Pose pose, VertexConsumer vc, Vec3 a, Vec3 b, Vec3 c, Vec3 d,
+    public static void quadTwoSided(PoseStack.Pose pose, VertexConsumer vc, Vec3 a, Vec3 b, Vec3 c, Vec3 d,
                                      float u0, float v0, float u1, float v1, float r, float g, float bl, float alpha) {
         vertex(pose, vc, a, u0, v0, r, g, bl, alpha);
         vertex(pose, vc, b, u1, v0, r, g, bl, alpha);
@@ -60,7 +60,7 @@ public final class ZephyrarchVfx {
         vertex(pose, vc, a, u0, v0, r, g, bl, alpha);
     }
 
-    public static void renderBossEffects(ZephyrarchEntity boss, float partialTick, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot) {
+    public static void renderBossEffects(ZephyrarchEntity boss, float partialTick, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot, Vec3 cameraPos) {
         if (boss.isDeadOrDying()) {
             return;
         }
@@ -70,20 +70,175 @@ public final class ZephyrarchVfx {
 
         renderAmbientAura(boss, time, phase2, ps, buffers, cameraRot);
 
+        renderCage(boss, partialTick, time, ps, buffers);
+        renderLance(boss, partialTick, ps, buffers, cameraPos);
+
         ZephyrarchAttack attack = boss.getAttack();
         if (attack == ZephyrarchAttack.NONE) {
             return;
         }
         float age = boss.getClientAttackAge(partialTick);
         switch (attack) {
-            case COMBO_PUNCH -> renderComboSlashes(age, bodyYaw, phase2, ps, buffers);
-            case TEMPEST_SLAM -> renderTempestSlam(boss, age, phase2, ps, buffers);
-            case GALE_BARRAGE -> renderGaleBarrage(age, bodyYaw, phase2, ps, buffers);
-            case CYCLONE_VORTEX -> renderCycloneVortex(age, time, phase2, ps, buffers, cameraRot);
+            case GALE_COMBO -> renderComboSlashes(age, bodyYaw, phase2, ps, buffers);
+            case ARM_SWEEP -> renderArmSweep(boss, age, time, ps, buffers);
+            case GALE_RUSH -> renderRush(age, bodyYaw, ps, buffers, cameraRot);
+            case SKY_HAMMER -> renderHammer(boss, age, ps, buffers);
+            case VORTEX_STOMP -> renderStomp(boss, age, time, ps, buffers);
             case PHASE_SHIFT -> renderPhaseShiftRebirth(age, time, ps, buffers, cameraRot);
+            case TEMPEST_LANCE -> renderLanceCharge(age, time, bodyYaw, ps, buffers, cameraRot);
+            case STORM_EYE, DOWNDRAFT -> renderRaisedFlare(age, time, attack == ZephyrarchAttack.STORM_EYE ? 20.0F : 12.0F, ps, buffers, cameraRot);
+            case CYCLONE_CAGE -> renderCageCast(age, time, ps, buffers, cameraRot);
             default -> {
             }
         }
+    }
+
+    private static void renderArmSweep(ZephyrarchEntity boss, float age, float time, PoseStack ps, MultiBufferSource buffers) {
+        double ground = findGroundOffset(boss);
+        if (age < 15.0F) {
+            float k = age / 15.0F;
+            drawFlatRing(ps, buffers, ground + 0.05D, 5.0F, -time * 6.0F, 0.75F, 0.96F, 1.0F, 0.2F + 0.5F * k,
+                    0.55F * k, 0.85F * k, 1.0F * k);
+        } else if (age < 24.0F) {
+            float k = (age - 15.0F) / 9.0F;
+            float fade = 1.0F - k;
+            float r = 2.0F + 3.6F * (1.0F - (float) Math.pow(1.0F - k, 3.0D));
+            drawFlatRing(ps, buffers, 1.6D, r, time * 30.0F, 0.88F, 0.99F, 1.0F, 0.9F * fade, 0.8F * fade, 0.95F * fade, 1.0F * fade);
+            drawFunnelWall(ps, buffers, 0.6D, 2.6D, r * 0.92F, r, time * 0.3F, 0.85F, 0.98F, 1.0F, 0.6F * fade,
+                    0.6F * fade, 0.9F * fade, 1.0F * fade);
+        }
+    }
+
+    private static void renderRush(float age, float bodyYaw, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot) {
+        if (age >= 16.0F && age <= 23.0F) {
+            float k = (age - 16.0F) / 7.0F;
+            ps.pushPose();
+            ps.translate(0.0D, 1.5D, 0.0D);
+            ps.mulPose(Axis.YP.rotationDegrees(-bodyYaw));
+            ps.mulPose(Axis.XP.rotationDegrees(90.0F));
+            drawFunnelWall(ps, buffers, -2.5D, 1.2D, 0.4F, 1.4F, age * 0.4F, 0.85F, 0.98F, 1.0F, 0.7F * (1.0F - k * 0.5F),
+                    0.6F, 0.9F, 1.0F);
+            ps.popPose();
+        }
+        if (age >= 21.0F && age <= 31.0F) {
+            drawSlashArc(ps, buffers, bodyYaw, 1.5D, 1.6D, 3.2D, -10.0F, true, (age - 21.0F) / 10.0F, false);
+        }
+    }
+
+    private static void renderHammer(ZephyrarchEntity boss, float age, PoseStack ps, MultiBufferSource buffers) {
+        if (age < 22.0F || age > 36.0F) {
+            return;
+        }
+        double ground = findGroundOffset(boss);
+        float k = (age - 22.0F) / 14.0F;
+        float ease = 1.0F - (float) Math.pow(1.0F - k, 3.0D);
+        float fade = 1.0F - k;
+        float waveR = 1.0F + 4.2F * ease;
+        drawFlatRing(ps, buffers, ground + 0.07D, waveR, age * 14.0F, 0.88F, 0.98F, 1.0F, 0.9F * fade,
+                0.72F * fade, 0.92F * fade, 1.0F * fade);
+        drawFunnelWall(ps, buffers, ground + 0.05D, ground + 1.35D * fade + 0.25D, waveR * 0.86F, waveR * 1.02F, -age * 0.12F,
+                0.82F, 0.98F, 1.0F, 0.78F * fade, 0.6F * fade, 0.86F * fade, 0.96F * fade);
+    }
+
+    private static void renderStomp(ZephyrarchEntity boss, float age, float time, PoseStack ps, MultiBufferSource buffers) {
+        double ground = findGroundOffset(boss);
+        if (age >= 6.0F && age < 30.0F) {
+            float k = Mth.clamp((age - 6.0F) / 22.0F, 0.0F, 1.0F);
+            float ramp = Mth.clamp((age - 6.0F) / 4.0F, 0.0F, 1.0F);
+            float r = 6.0F - 3.5F * k;
+            drawFlatRing(ps, buffers, ground + 0.06D, r, -time * 20.0F, 0.75F, 0.96F, 1.0F, 0.6F * ramp, 0.4F * ramp, 0.7F * ramp, 0.9F * ramp);
+            drawFunnelWall(ps, buffers, ground, ground + 1.8D, r, r * 1.15F, -time * 0.2F, 0.8F, 0.97F, 1.0F, 0.5F * ramp,
+                    0.4F * ramp, 0.75F * ramp, 0.9F * ramp);
+        } else if (age >= 30.0F && age <= 42.0F) {
+            float k = (age - 30.0F) / 12.0F;
+            float fade = 1.0F - k;
+            float r = 1.0F + 3.4F * (1.0F - (float) Math.pow(1.0F - k, 3.0D));
+            drawFlatRing(ps, buffers, ground + 0.08D, r, time * 18.0F, 0.92F, 0.99F, 1.0F, 0.92F * fade, 0.75F * fade, 0.95F * fade, fade);
+            drawFunnelWall(ps, buffers, ground, ground + 2.8D * fade + 0.3D, r * 0.85F, r, time * 0.15F, 0.88F, 0.99F, 1.0F,
+                    0.8F * fade, 0.7F * fade, 0.9F * fade, fade);
+        }
+    }
+
+    private static void renderLanceCharge(float age, float time, float bodyYaw, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot) {
+        if (age < 36.0F) {
+            float k = Mth.clamp(age / 30.0F, 0.0F, 1.0F);
+            Vec3 core = Vec3.directionFromRotation(0.0F, bodyYaw).scale(0.6D).add(0.0D, 2.0D, 0.0D);
+            drawBillboardFlare(ps, buffers, cameraRot, core, 0.3F + 0.9F * k, time * 9.0F, k, 0.95F * k, 0.75F * k);
+        }
+    }
+
+    private static void renderRaisedFlare(float age, float time, float peak, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot) {
+        float k = age < peak ? age / peak : Mth.clamp(1.0F - (age - peak) / 10.0F, 0.0F, 1.0F);
+        drawBillboardFlare(ps, buffers, cameraRot, new Vec3(0.0D, 4.4D, 0.0D), 0.4F + 0.9F * k, time * 6.0F,
+                0.7F * k, 0.95F * k, k);
+    }
+
+    private static void renderCageCast(float age, float time, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot) {
+        if (age < 22.0F) {
+            float k = age / 20.0F;
+            drawFunnelWall(ps, buffers, 0.2D, 3.2D, 1.4F, 2.2F, -time * 0.3F, 0.82F, 0.98F, 1.0F, 0.6F * k, 0.5F * k, 0.8F * k, 0.9F * k);
+        }
+    }
+
+    private static void renderCage(ZephyrarchEntity boss, float partialTick, float time, PoseStack ps, MultiBufferSource buffers) {
+        int ticks = boss.getCageTicks();
+        if (ticks <= 0) {
+            return;
+        }
+        Vec3 rel = boss.getCageCenter().subtract(boss.getPosition(partialTick));
+        float fadeIn = Mth.clamp((ZephyrarchEntity.CAGE_DURATION - ticks) / 8.0F, 0.0F, 1.0F);
+        float fade = Math.min(fadeIn, Mth.clamp(ticks / 15.0F, 0.0F, 1.0F));
+        float r = (float) ZephyrarchEntity.CAGE_RADIUS;
+        ps.pushPose();
+        ps.translate(rel.x, rel.y, rel.z);
+        drawFunnelWall(ps, buffers, 0.0D, ZephyrarchEntity.CAGE_HEIGHT, r, r, -time * 0.18F, 0.8F, 0.97F, 1.0F, 0.55F * fade,
+                0.35F * fade, 0.7F * fade, 0.9F * fade);
+        drawFunnelWall(ps, buffers, 0.0D, ZephyrarchEntity.CAGE_HEIGHT * 0.7D, r - 0.15F, r - 0.15F, time * 0.24F, 0.75F, 0.95F, 1.0F,
+                0.4F * fade, 0.25F * fade, 0.55F * fade, 0.75F * fade);
+        drawFlatRing(ps, buffers, 0.06D, r, time * 4.0F, 0.75F, 0.96F, 1.0F, 0.5F * fade, 0.4F * fade, 0.7F * fade, 0.9F * fade);
+        ps.popPose();
+    }
+
+    private static void renderLance(ZephyrarchEntity boss, float partialTick, PoseStack ps, MultiBufferSource buffers, Vec3 cameraPos) {
+        int state = boss.getLanceState();
+        if (state == 0) {
+            return;
+        }
+        Vec3 vec = boss.getLanceVector();
+        if (vec.lengthSqr() < 0.01D) {
+            return;
+        }
+        Vec3 origin = boss.getLanceOrigin().subtract(boss.position());
+        float age = boss.getClientAttackAge(partialTick);
+        float width;
+        float r;
+        float g;
+        float b;
+        float a;
+        if (state == 1) {
+            width = 0.05F;
+            r = 0.7F; g = 0.95F; b = 1.0F; a = 0.55F;
+        } else if (state == 2) {
+            width = 0.12F + 0.03F * Mth.sin(age * 2.0F);
+            r = 1.0F; g = 0.55F; b = 0.45F; a = 0.9F;
+        } else {
+            float k = Mth.clamp((age - 36.0F) / 8.0F, 0.0F, 1.0F);
+            width = 0.75F * (1.0F - k) + 0.1F;
+            r = 0.9F; g = 0.98F; b = 1.0F; a = 1.0F - k;
+        }
+        Vec3 worldOrigin = boss.getPosition(partialTick).add(origin);
+        Vec3 toCam = cameraPos.subtract(worldOrigin.add(vec.scale(0.5D)));
+        Vec3 side = vec.cross(toCam);
+        side = side.lengthSqr() < 1.0E-6D ? new Vec3(0.0D, 1.0D, 0.0D) : side.normalize();
+        PoseStack.Pose pose = ps.last();
+        Vec3 p0 = origin;
+        Vec3 p1 = origin.add(vec);
+        quadTwoSided(pose, buffers.getBuffer(RenderType.entityTranslucent(RIBBON)),
+                p0.add(side.scale(width)), p1.add(side.scale(width)), p1.subtract(side.scale(width)), p0.subtract(side.scale(width)),
+                0.0F, 0.0F, (float) vec.length() * 0.25F, 1.0F, r, g, b, a);
+        quadTwoSided(pose, buffers.getBuffer(additive(RIBBON_GLOW)),
+                p0.add(side.scale(width * 0.6F)), p1.add(side.scale(width * 0.6F)), p1.subtract(side.scale(width * 0.6F)), p0.subtract(side.scale(width * 0.6F)),
+                0.0F, 0.0F, (float) vec.length() * 0.25F, 1.0F, r * a, g * a, b * a, 1.0F);
     }
 
     private static void renderAmbientAura(ZephyrarchEntity boss, float time, boolean phase2, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot) {
@@ -190,141 +345,6 @@ public final class ZephyrarchVfx {
         }
 
         ps.popPose();
-    }
-
-    private static void renderTempestSlam(ZephyrarchEntity boss, float age, boolean phase2, PoseStack ps, MultiBufferSource buffers) {
-        double groundOffset = findGroundOffset(boss);
-        float maxRadius = phase2 ? 6.8F : 5.4F;
-
-        if (age >= 4.0F && age < 20.0F) {
-            float k = (age - 4.0F) / 16.0F;
-            float teleRadius = maxRadius * (1.05F - 0.35F * k);
-            float alpha = 0.25F + 0.55F * k;
-            drawFlatRing(ps, buffers, groundOffset + 0.05D, teleRadius, -age * 12.0F,
-                    0.75F, 0.96F, 1.0F, alpha,
-                    (phase2 ? 0.85F : 0.45F) * k, 0.80F * k, (phase2 ? 0.45F : 0.95F) * k);
-
-            if (age >= 14.0F) {
-                float diveK = (age - 14.0F) / 6.0F;
-                drawFunnelWall(ps, buffers, 0.3D, 2.8D, 0.65F, 1.75F, age * 0.25F,
-                        0.80F, 0.98F, 1.0F, 0.65F * diveK, 0.55F * diveK, 0.80F * diveK, 0.90F * diveK);
-            }
-        } else if (age >= 20.0F && age <= 34.0F) {
-            float k = (age - 20.0F) / 14.0F;
-            float ease = 1.0F - (float) Math.pow(1.0F - k, 3.0D);
-            float fade = 1.0F - k;
-            float waveR = 1.0F + (maxRadius + 0.8F) * ease;
-
-            drawFlatRing(ps, buffers, groundOffset + 0.07D, waveR, age * 14.0F,
-                    0.88F, 0.98F, 1.0F, 0.90F * fade,
-                    (phase2 ? 1.0F : 0.72F) * fade, 0.92F * fade, (phase2 ? 0.52F : 1.0F) * fade);
-
-            drawFunnelWall(ps, buffers, groundOffset + 0.05D, groundOffset + 1.35D * fade + 0.25D,
-                    waveR * 0.86F, waveR * 1.02F, -age * 0.12F,
-                    0.82F, 0.98F, 1.0F, 0.78F * fade,
-                    (phase2 ? 0.95F : 0.60F) * fade, 0.86F * fade, (phase2 ? 0.45F : 0.96F) * fade);
-
-            if (k < 0.55F) {
-                float pillarFade = 1.0F - k / 0.55F;
-                drawFunnelWall(ps, buffers, groundOffset + 0.05D, groundOffset + 4.2D * (0.4F + 0.6F * ease),
-                        0.75F + 0.6F * ease, 1.65F + 0.9F * ease, age * 0.22F,
-                        0.90F, 0.99F, 1.0F, 0.72F * pillarFade,
-                        0.85F * pillarFade, 0.95F * pillarFade, 1.0F * pillarFade);
-            }
-        }
-    }
-
-    private static void renderGaleBarrage(float age, float bodyYaw, boolean phase2, PoseStack ps, MultiBufferSource buffers) {
-        float[] shots = {14.0F, 24.0F, 34.0F};
-        for (int idx = 0; idx < shots.length; idx++) {
-            float shotAt = shots[idx];
-            if (age >= shotAt - 6.0F && age <= shotAt + 5.0F) {
-                boolean isFinal = idx == 2;
-                float scale;
-                float alpha;
-                if (age <= shotAt) {
-                    float chargeK = (age - (shotAt - 6.0F)) / 6.0F;
-                    scale = (isFinal && phase2 ? 1.45F : 1.05F) * (1.35F - 0.55F * chargeK);
-                    alpha = 0.85F * chargeK;
-                } else {
-                    float burstK = (age - shotAt) / 5.0F;
-                    scale = (isFinal && phase2 ? 1.15F : 0.85F) + 1.65F * burstK;
-                    alpha = 0.90F * (1.0F - burstK);
-                }
-
-                ps.pushPose();
-                ps.translate(0.0D, 2.05D, 0.0D);
-                ps.mulPose(Axis.YP.rotationDegrees(-bodyYaw));
-                ps.translate(0.0D, 0.0D, 1.35D);
-                ps.mulPose(Axis.ZP.rotationDegrees(age * (idx % 2 == 0 ? 22.0F : -22.0F)));
-
-                PoseStack.Pose pose = ps.last();
-                Vec3 a = new Vec3(-scale, scale, 0.0D);
-                Vec3 b = new Vec3(scale, scale, 0.0D);
-                Vec3 c = new Vec3(scale, -scale, 0.0D);
-                Vec3 d = new Vec3(-scale, -scale, 0.0D);
-
-                quadTwoSided(pose, buffers.getBuffer(RenderType.entityTranslucent(RING)), a, b, c, d,
-                        0.0F, 0.0F, 1.0F, 1.0F, 0.85F, 0.98F, 1.0F, alpha);
-                float gr = (isFinal && phase2 ? 1.0F : 0.65F) * alpha;
-                float gg = 0.92F * alpha;
-                float gb = (isFinal && phase2 ? 0.45F : 1.0F) * alpha;
-                quadTwoSided(pose, buffers.getBuffer(additive(RING_GLOW)), a, b, c, d,
-                        0.0F, 0.0F, 1.0F, 1.0F, gr, gg, gb, 1.0F);
-                ps.popPose();
-            }
-        }
-    }
-
-    private static void renderCycloneVortex(float age, float time, boolean phase2, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot) {
-        if (age < 49.0F) {
-            float ramp = Mth.clamp(age / 8.0F, 0.0F, 1.0F);
-            float compress = age > 43.0F ? Mth.clamp(1.0F - (age - 43.0F) / 6.0F * 0.65F, 0.35F, 1.0F) : 1.0F;
-            float rScale = ramp * compress;
-
-            drawFlatRing(ps, buffers, 0.08D, (phase2 ? 7.2F : 6.2F) * ramp, time * 16.0F,
-                    0.75F, 0.96F, 1.0F, 0.55F * ramp,
-                    0.45F * ramp, 0.72F * ramp, 0.85F * ramp);
-
-            drawFunnelWall(ps, buffers, 0.1D, 1.6D, 1.35F * rScale, 2.65F * rScale, -time * 0.16F,
-                    0.80F, 0.97F, 1.0F, 0.68F * ramp,
-                    (phase2 ? 0.75F : 0.45F) * ramp, 0.75F * ramp, 0.88F * ramp);
-
-            drawFunnelWall(ps, buffers, 1.3D, 3.1D, 2.25F * rScale, 3.75F * rScale, time * 0.13F,
-                    0.78F, 0.96F, 1.0F, 0.58F * ramp,
-                    (phase2 ? 0.85F : 0.42F) * ramp, 0.72F * ramp, (phase2 ? 0.48F : 0.85F) * ramp);
-
-            drawFunnelWall(ps, buffers, 2.7D, 4.4D, 3.35F * rScale, 4.75F * rScale, -time * 0.10F,
-                    0.72F, 0.94F, 1.0F, 0.45F * ramp,
-                    0.35F * ramp, 0.62F * ramp, 0.75F * ramp);
-
-            if (age > 34.0F) {
-                float coreCharge = (age - 34.0F) / 15.0F;
-                drawBillboardFlare(ps, buffers, cameraRot, new Vec3(0.0D, 1.85D, 0.0D),
-                        0.6F + 1.35F * coreCharge, time * 8.0F,
-                        coreCharge, 0.94F * coreCharge, (phase2 ? 0.52F : 0.98F) * coreCharge);
-            }
-        } else {
-            float burstK = Mth.clamp((age - 49.0F) / 11.0F, 0.0F, 1.0F);
-            float ease = 1.0F - (float) Math.pow(1.0F - burstK, 3.0D);
-            float fade = 1.0F - burstK;
-            float maxR = phase2 ? 7.6F : 6.4F;
-            float curR = 1.2F + maxR * ease;
-
-            drawFlatRing(ps, buffers, 1.45D, curR, -time * 18.0F,
-                    0.92F, 0.99F, 1.0F, 0.92F * fade,
-                    (phase2 ? 1.0F : 0.75F) * fade, 0.95F * fade, (phase2 ? 0.55F : 1.0F) * fade);
-
-            drawFunnelWall(ps, buffers, 0.4D, 2.8D, curR * 0.88F, curR * 1.04F, time * 0.15F,
-                    0.88F, 0.99F, 1.0F, 0.82F * fade,
-                    (phase2 ? 1.0F : 0.68F) * fade, 0.90F * fade, (phase2 ? 0.50F : 1.0F) * fade);
-
-            if (burstK < 0.45F) {
-                float flash = 1.0F - burstK / 0.45F;
-                drawBillboardFlare(ps, buffers, cameraRot, new Vec3(0.0D, 1.85D, 0.0D),
-                        2.8F * flash + 0.8F, time * 5.0F, flash, 0.96F * flash, 0.72F * flash);
-            }
-        }
     }
 
     private static void renderPhaseShiftRebirth(float age, float time, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot) {
@@ -447,7 +467,7 @@ public final class ZephyrarchVfx {
         ps.popPose();
     }
 
-    private static void drawFlatRing(PoseStack ps, MultiBufferSource buffers, double yOffset, float radius, float spinDeg,
+    public static void drawFlatRing(PoseStack ps, MultiBufferSource buffers, double yOffset, float radius, float spinDeg,
                                      float tr, float tg, float tb, float alpha, float gr, float gg, float gb) {
         if (radius <= 0.02F || alpha <= 0.01F) {
             return;
@@ -484,7 +504,7 @@ public final class ZephyrarchVfx {
         ps.popPose();
     }
 
-    private static void drawFunnelWall(PoseStack ps, MultiBufferSource buffers, double yBottom, double yTop,
+    public static void drawFunnelWall(PoseStack ps, MultiBufferSource buffers, double yBottom, double yTop,
                                        float rBottom, float rTop, float uScroll,
                                        float tr, float tg, float tb, float alpha, float gr, float gg, float gb) {
         if (alpha <= 0.01F) {
@@ -529,7 +549,7 @@ public final class ZephyrarchVfx {
         }
     }
 
-    private static void drawBillboardFlare(PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot, Vec3 localPos,
+    public static void drawBillboardFlare(PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot, Vec3 localPos,
                                            float size, float spinDeg, float r, float g, float b) {
         if (size <= 0.01F) {
             return;

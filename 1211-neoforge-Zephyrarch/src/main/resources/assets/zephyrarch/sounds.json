@@ -1,0 +1,178 @@
+{
+  "punch_swing": {
+    "subtitle": "subtitles.zephyrarch.punch_swing",
+    "sounds": [
+      {
+        "name": "zephyrarch:punch_swing"
+      }
+    ]
+  },
+  "punch_impact": {
+    "subtitle": "subtitles.zephyrarch.punch_impact",
+    "sounds": [
+      {
+        "name": "zephyrarch:punch_impact"
+      }
+    ]
+  },
+  "sweep_spin": {
+    "subtitle": "subtitles.zephyrarch.sweep_spin",
+    "sounds": [
+      {
+        "name": "zephyrarch:sweep_spin"
+      }
+    ]
+  },
+  "rush_charge": {
+    "subtitle": "subtitles.zephyrarch.rush_charge",
+    "sounds": [
+      {
+        "name": "zephyrarch:rush_charge"
+      }
+    ]
+  },
+  "rush_dash": {
+    "subtitle": "subtitles.zephyrarch.rush_dash",
+    "sounds": [
+      {
+        "name": "zephyrarch:rush_dash"
+      }
+    ]
+  },
+  "hammer_rise": {
+    "subtitle": "subtitles.zephyrarch.hammer_rise",
+    "sounds": [
+      {
+        "name": "zephyrarch:hammer_rise"
+      }
+    ]
+  },
+  "hammer_slam": {
+    "subtitle": "subtitles.zephyrarch.hammer_slam",
+    "sounds": [
+      {
+        "name": "zephyrarch:hammer_slam"
+      }
+    ]
+  },
+  "grab_catch": {
+    "subtitle": "subtitles.zephyrarch.grab_catch",
+    "sounds": [
+      {
+        "name": "zephyrarch:grab_catch"
+      }
+    ]
+  },
+  "grab_throw": {
+    "subtitle": "subtitles.zephyrarch.grab_throw",
+    "sounds": [
+      {
+        "name": "zephyrarch:grab_throw"
+      }
+    ]
+  },
+  "stomp_pull": {
+    "subtitle": "subtitles.zephyrarch.stomp_pull",
+    "sounds": [
+      {
+        "name": "zephyrarch:stomp_pull"
+      }
+    ]
+  },
+  "stomp_burst": {
+    "subtitle": "subtitles.zephyrarch.stomp_burst",
+    "sounds": [
+      {
+        "name": "zephyrarch:stomp_burst"
+      }
+    ]
+  },
+  "phase_shift": {
+    "subtitle": "subtitles.zephyrarch.phase_shift",
+    "sounds": [
+      {
+        "name": "zephyrarch:phase_shift"
+      }
+    ]
+  },
+  "wind_dash": {
+    "subtitle": "subtitles.zephyrarch.wind_dash",
+    "sounds": [
+      {
+        "name": "zephyrarch:wind_dash"
+      }
+    ]
+  },
+  "stagger": {
+    "subtitle": "subtitles.zephyrarch.stagger",
+    "sounds": [
+      {
+        "name": "zephyrarch:stagger"
+      }
+    ]
+  },
+  "bolt_shoot": {
+    "subtitle": "subtitles.zephyrarch.bolt_shoot",
+    "sounds": [
+      {
+        "name": "zephyrarch:bolt_shoot"
+      }
+    ]
+  },
+  "lance_charge": {
+    "subtitle": "subtitles.zephyrarch.lance_charge",
+    "sounds": [
+      {
+        "name": "zephyrarch:lance_charge"
+      }
+    ]
+  },
+  "lance_fire": {
+    "subtitle": "subtitles.zephyrarch.lance_fire",
+    "sounds": [
+      {
+        "name": "zephyrarch:lance_fire"
+      }
+    ]
+  },
+  "twister_spawn": {
+    "subtitle": "subtitles.zephyrarch.twister_spawn",
+    "sounds": [
+      {
+        "name": "zephyrarch:twister_spawn"
+      }
+    ]
+  },
+  "downdraft_impact": {
+    "subtitle": "subtitles.zephyrarch.downdraft_impact",
+    "sounds": [
+      {
+        "name": "zephyrarch:downdraft_impact"
+      }
+    ]
+  },
+  "blade_throw": {
+    "subtitle": "subtitles.zephyrarch.blade_throw",
+    "sounds": [
+      {
+        "name": "zephyrarch:blade_throw"
+      }
+    ]
+  },
+  "cage_form": {
+    "subtitle": "subtitles.zephyrarch.cage_form",
+    "sounds": [
+      {
+        "name": "zephyrarch:cage_form"
+      }
+    ]
+  },
+  "orb_shoot": {
+    "subtitle": "subtitles.zephyrarch.orb_shoot",
+    "sounds": [
+      {
+        "name": "zephyrarch:orb_shoot"
+      }
+    ]
+  }
+}

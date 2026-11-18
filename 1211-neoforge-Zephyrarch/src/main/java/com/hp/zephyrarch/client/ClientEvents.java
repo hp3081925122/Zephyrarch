@@ -9,6 +9,8 @@ public final class ClientEvents {
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModRegistry.ZEPHYRARCH.get(), ZephyrarchRenderer::new);
         event.registerEntityRenderer(ModRegistry.ZEPHYR_CHARGE.get(), ZephyrChargeRenderer::new);
+        event.registerEntityRenderer(ModRegistry.ZEPHYR_TWISTER.get(), ZephyrWindRenderers.Twister::new);
+        event.registerEntityRenderer(ModRegistry.ZEPHYR_BLADE.get(), ZephyrWindRenderers.Blade::new);
     }
 
     private ClientEvents() {

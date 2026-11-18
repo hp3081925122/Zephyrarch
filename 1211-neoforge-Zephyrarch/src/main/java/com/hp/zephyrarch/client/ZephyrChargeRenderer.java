@@ -19,7 +19,11 @@ public final class ZephyrChargeRenderer extends GeoEntityRenderer<ZephyrChargeEn
 
     @Override
     public void render(ZephyrChargeEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+        float scale = entity.getScale();
+        poseStack.pushPose();
+        poseStack.scale(scale, scale, scale);
         super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
+        poseStack.popPose();
         ZephyrarchVfx.renderChargeTrail(entity, partialTick, poseStack, bufferSource, this.entityRenderDispatcher.camera.getPosition());
     }
 

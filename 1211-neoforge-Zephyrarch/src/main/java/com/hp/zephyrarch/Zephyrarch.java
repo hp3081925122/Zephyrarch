@@ -6,6 +6,7 @@ import com.hp.zephyrarch.entity.ZephyrarchEntity;
 import com.hp.zephyrarch.event.ZephyrarchCombatEvents;
 import com.hp.zephyrarch.item.SovereignGalebladeItem;
 import com.hp.zephyrarch.registry.ModRegistry;
+import com.hp.zephyrarch.registry.ModSounds;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -28,6 +29,7 @@ public final class Zephyrarch {
         ModRegistry.ITEMS.register(modEventBus);
         ModRegistry.EFFECTS.register(modEventBus);
         ModRegistry.TABS.register(modEventBus);
+        ModSounds.SOUNDS.register(modEventBus);
 
         modEventBus.addListener(this::registerAttributes);
         modEventBus.addListener(this::fillCreativeTabs);

@@ -20,7 +20,7 @@ public final class ZephyrarchRenderer extends GeoEntityRenderer<ZephyrarchEntity
     @Override
     public void render(ZephyrarchEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
-        ZephyrarchVfx.renderBossEffects(entity, partialTick, poseStack, bufferSource, this.entityRenderDispatcher.cameraOrientation());
+        ZephyrarchVfx.renderBossEffects(entity, partialTick, poseStack, bufferSource, this.entityRenderDispatcher.cameraOrientation(), this.entityRenderDispatcher.camera.getPosition());
     }
 
     @Override
@@ -30,6 +30,6 @@ public final class ZephyrarchRenderer extends GeoEntityRenderer<ZephyrarchEntity
 
     @Override
     public boolean shouldRender(ZephyrarchEntity entity, Frustum frustum, double x, double y, double z) {
-        return entity.shouldRender(x, y, z) && frustum.isVisible(entity.getBoundingBox().inflate(8.0D));
+        return entity.shouldRender(x, y, z) && frustum.isVisible(entity.getBoundingBox().inflate(26.0D));
     }
 }
