@@ -1,6 +1,7 @@
 package com.hp.zephyrarch.entity;
 
 import com.hp.zephyrarch.config.ZephyrarchConfig;
+import com.hp.zephyrarch.event.ZephyrarchCombatEvents;
 import com.hp.zephyrarch.registry.ModRegistry;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -13,6 +14,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.Level;
@@ -25,16 +27,18 @@ import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.animation.RawAnimation;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 
 public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
     private static final RawAnimation SPIN = RawAnimation.begin().thenLoop("animation.zephyr_charge.spin");
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    public final Deque<Vec3> clientTrail = new ArrayDeque<>(12);
     private float baseDamage = 8.0F;
     private int life;
 
@@ -77,6 +81,10 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
         ProjectileUtil.rotateTowardsMovement(this, 0.5F);
 
         if (level().isClientSide) {
+            if (clientTrail.size() >= 10) {
+                clientTrail.removeLast();
+            }
+            clientTrail.addFirst(position().add(0.0D, 0.25D, 0.0D));
             level().addParticle(ParticleTypes.SMALL_GUST, getX(), getY() + 0.15D, getZ(), 0.0D, 0.0D, 0.0D);
         }
     }
@@ -128,7 +136,9 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
 
         double radius = 2.8D;
         AABB area = getBoundingBox().inflate(radius);
-        List<LivingEntity> victims = serverLevel.getEntitiesOfClass(LivingEntity.class, area, e -> e.isAlive() && (owner == null || (!e.is(owner) && !owner.isAlliedTo(e))));
+        List<LivingEntity> victims = serverLevel.getEntitiesOfClass(LivingEntity.class, area, e -> e.isAlive()
+                && !(e instanceof Player p && (p.isCreative() || p.isSpectator()))
+                && (owner == null || (!e.is(owner) && !owner.isAlliedTo(e))));
         double globalKb = ZephyrarchConfig.KNOCKBACK_SCALE.get();
 
         for (LivingEntity victim : victims) {
@@ -137,6 +147,9 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
                 continue;
             }
             float falloff = victim == directHit ? 1.0F : (float) Math.max(0.55D, 1.0D - dist / (radius + 1.0D));
+            if (owner != null) {
+                ZephyrarchCombatEvents.applyAntiHealIfEligible(owner, victim);
+            }
             victim.hurt(source, computedBase * falloff);
 
             double resist = Math.max(0.0D, 1.0D - victim.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));

@@ -3,6 +3,7 @@ package com.hp.zephyrarch;
 import com.hp.zephyrarch.client.ClientEvents;
 import com.hp.zephyrarch.config.ZephyrarchConfig;
 import com.hp.zephyrarch.entity.ZephyrarchEntity;
+import com.hp.zephyrarch.event.ZephyrarchCombatEvents;
 import com.hp.zephyrarch.item.SovereignGalebladeItem;
 import com.hp.zephyrarch.registry.ModRegistry;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -25,12 +26,14 @@ public final class Zephyrarch {
 
         ModRegistry.ENTITIES.register(modEventBus);
         ModRegistry.ITEMS.register(modEventBus);
+        ModRegistry.EFFECTS.register(modEventBus);
         ModRegistry.TABS.register(modEventBus);
 
         modEventBus.addListener(this::registerAttributes);
         modEventBus.addListener(this::fillCreativeTabs);
 
         NeoForge.EVENT_BUS.register(SovereignGalebladeItem.Events.class);
+        NeoForge.EVENT_BUS.register(ZephyrarchCombatEvents.class);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.register(ClientEvents.class);

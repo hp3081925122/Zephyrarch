@@ -11,9 +11,6 @@ public final class ZephyrarchConfig {
     public static final ModConfigSpec.DoubleValue MOVEMENT_SPEED;
     public static final ModConfigSpec.DoubleValue FOLLOW_RANGE;
 
-    public static final ModConfigSpec.DoubleValue PHASE2_HEALTH_RATIO;
-    public static final ModConfigSpec.DoubleValue LOW_HEALTH_BURST_RATIO;
-
     public static final ModConfigSpec.DoubleValue COMBO_PUNCH_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue COMBO_FINISHER_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue TEMPEST_SLAM_MULTIPLIER;
@@ -22,6 +19,13 @@ public final class ZephyrarchConfig {
     public static final ModConfigSpec.DoubleValue CYCLONE_BURST_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue PHASE_SHIFT_BURST_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue KNOCKBACK_SCALE;
+
+    public static final ModConfigSpec.BooleanValue CRICKET_MODE_ENABLED;
+    public static final ModConfigSpec.DoubleValue NON_PLAYER_DAMAGE_CAP_RATIO;
+    public static final ModConfigSpec.IntValue ANTI_HEAL_DURATION_TICKS;
+    public static final ModConfigSpec.DoubleValue SURVIVAL_PLAYER_CHECK_RANGE;
+    public static final ModConfigSpec.DoubleValue NO_PLAYER_COOLDOWN_SCALE;
+    public static final ModConfigSpec.DoubleValue NO_PLAYER_ACTION_SPEED;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -51,16 +55,8 @@ public final class ZephyrarchConfig {
 
         builder.pop();
 
-        builder.comment("罡风君主阶段阈值与技能倍率配置 / Phase thresholds and skill damage multipliers")
+        builder.comment("罡风君主战斗与技能倍率配置 (第一条命死亡回满血进入二阶段，无三阶段) / Combat and skill damage multipliers (Phase 1 fatal blow restores full HP and enters Phase 2, no Phase 3)")
                 .push("combat");
-
-        PHASE2_HEALTH_RATIO = builder
-                .comment("触发狂飙二阶段的最大生命值百分比阈值 (0.50 = 50%血量) / Max health percentage threshold to enter Phase 2 (0.50 = 50% HP)")
-                .defineInRange("phase2HealthRatio", 0.50D, 0.05D, 0.95D);
-
-        LOW_HEALTH_BURST_RATIO = builder
-                .comment("触发低血量强化狂风攻势的最大生命值百分比阈值 (0.25 = 25%血量) / Max health percentage threshold for low-health tempest overdrive (0.25 = 25% HP)")
-                .defineInRange("lowHealthBurstRatio", 0.25D, 0.05D, 0.90D);
 
         COMBO_PUNCH_MULTIPLIER = builder
                 .comment("连环重拳第一击伤害倍率 / Damage multiplier for the first strike of Combo Punch")
@@ -87,12 +83,41 @@ public final class ZephyrarchConfig {
                 .defineInRange("cycloneBurstMultiplier", 1.60D, 0.10D, 10.0D);
 
         PHASE_SHIFT_BURST_MULTIPLIER = builder
-                .comment("半血转阶段风暴震波伤害倍率 / Damage multiplier for Phase Shift awakening burst")
-                .defineInRange("phaseShiftBurstMultiplier", 1.15D, 0.10D, 10.0D);
+                .comment("第一条命死亡满血觉醒二阶段时的风暴震波伤害倍率 / Damage multiplier for Phase 2 rebirth storm burst")
+                .defineInRange("phaseShiftBurstMultiplier", 1.25D, 0.10D, 10.0D);
 
         KNOCKBACK_SCALE = builder
                 .comment("技能击退力度全局缩放系数 (实际击退还会受目标击退抗性减免) / Global knockback scale for skills (actual knockback is also reduced by target knockback resistance)")
                 .defineInRange("knockbackScale", 1.00D, 0.0D, 3.0D);
+
+        builder.pop();
+
+        builder.comment("斗蛐蛐模式配置 (非玩家限伤、对非玩家禁疗、周围无生存玩家时高频出招) / Cricket (Mob Arena) mode settings (non-player damage cap, anti-heal on non-players, rapid attack frequency without survival players nearby)")
+                .push("cricketMode");
+
+        CRICKET_MODE_ENABLED = builder
+                .comment("是否开启斗蛐蛐模式 (默认开启) / Enable Cricket Mode (enabled by default)")
+                .define("enabled", true);
+
+        NON_PLAYER_DAMAGE_CAP_RATIO = builder
+                .comment("来自非玩家且主人不是玩家的有源伤害单次上限占最大生命值的比例 (0.04 = 单次最多扣除4%最大生命值；无源伤害不受限制) / Max single-hit damage ratio of max health from non-player / non-player-owned sources (0.04 = 4% max HP; sourceless damage is unaffected)")
+                .defineInRange("nonPlayerDamageCapRatio", 0.04D, 0.005D, 1.00D);
+
+        ANTI_HEAL_DURATION_TICKS = builder
+                .comment("攻击非玩家生物时施加禁疗效果的持续时间 (刻，20刻=1秒) / Duration in ticks of the anti-heal effect applied when hitting non-player entities")
+                .defineInRange("antiHealDurationTicks", 120, 20, 6000);
+
+        SURVIVAL_PLAYER_CHECK_RANGE = builder
+                .comment("检测周围是否存在生存/冒险模式玩家的半径 (格)，范围内无此类玩家时加快攻击频率 / Radius in blocks to check for survival/adventure players; attack frequency increases when none are present")
+                .defineInRange("survivalPlayerCheckRange", 48.0D, 8.0D, 128.0D);
+
+        NO_PLAYER_COOLDOWN_SCALE = builder
+                .comment("周围没有生存模式玩家时的技能冷却与攻击间隔缩放系数 (越小越快，0.40 = 原冷却的40%) / Skill cooldown and attack interval scale when no survival player is nearby (lower is faster, 0.40 = 40% cooldown)")
+                .defineInRange("noPlayerCooldownScale", 0.40D, 0.10D, 1.00D);
+
+        NO_PLAYER_ACTION_SPEED = builder
+                .comment("周围没有生存模式玩家时的攻击动作帧推进速率倍率 (1.45 = 1.45倍出招速度) / Attack action speed multiplier when no survival player is nearby (1.45 = 1.45x speed)")
+                .defineInRange("noPlayerActionSpeed", 1.45D, 1.00D, 3.00D);
 
         builder.pop();
 

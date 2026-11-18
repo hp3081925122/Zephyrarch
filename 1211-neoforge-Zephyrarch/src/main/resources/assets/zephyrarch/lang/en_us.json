@@ -1,7 +1,9 @@
 {
   "itemGroup.zephyrarch": "Zephyrarch",
+  "bossbar.zephyrarch.zephyrarch": "%s",
   "entity.zephyrarch.zephyrarch": "Zephyrarch",
   "entity.zephyrarch.zephyr_charge": "Zephyr Charge",
+  "effect.zephyrarch.gale_severance": "Gale Severance",
   "item.zephyrarch.zephyrarch_spawn_egg": "Zephyrarch Spawn Egg",
   "item.zephyrarch.tempest_crest": "Tempest Crest",
   "item.zephyrarch.tempest_crest.desc": "Right-click in an open area to summon the Zephyrarch",

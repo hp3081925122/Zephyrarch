@@ -1,8 +1,10 @@
 package com.hp.zephyrarch.client;
 
 import com.hp.zephyrarch.entity.ZephyrChargeEntity;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
@@ -16,7 +18,18 @@ public final class ZephyrChargeRenderer extends GeoEntityRenderer<ZephyrChargeEn
     }
 
     @Override
+    public void render(ZephyrChargeEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
+        ZephyrarchVfx.renderChargeTrail(entity, partialTick, poseStack, bufferSource, this.entityRenderDispatcher.camera.getPosition());
+    }
+
+    @Override
     public RenderType getRenderType(ZephyrChargeEntity animatable, ResourceLocation texture, MultiBufferSource bufferSource, float partialTick) {
         return RenderType.entityTranslucent(texture);
+    }
+
+    @Override
+    public boolean shouldRender(ZephyrChargeEntity entity, Frustum frustum, double x, double y, double z) {
+        return entity.shouldRender(x, y, z) && frustum.isVisible(entity.getBoundingBox().inflate(4.0D));
     }
 }
