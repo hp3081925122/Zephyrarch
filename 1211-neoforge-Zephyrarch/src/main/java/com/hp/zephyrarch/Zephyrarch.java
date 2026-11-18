@@ -4,9 +4,8 @@ import com.hp.zephyrarch.client.ClientEvents;
 import com.hp.zephyrarch.config.ZephyrarchConfig;
 import com.hp.zephyrarch.entity.ZephyrarchEntity;
 import com.hp.zephyrarch.event.ZephyrarchCombatEvents;
-import com.hp.zephyrarch.item.SovereignGalebladeItem;
+import com.hp.zephyrarch.item.SovereignGauntletItem;
 import com.hp.zephyrarch.registry.ModRegistry;
-import com.hp.zephyrarch.registry.ModSounds;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -27,13 +26,13 @@ public final class Zephyrarch {
 
         ModRegistry.ENTITIES.register(modEventBus);
         ModRegistry.ITEMS.register(modEventBus);
+        ModRegistry.EFFECTS.register(modEventBus);
         ModRegistry.TABS.register(modEventBus);
-        ModSounds.SOUNDS.register(modEventBus);
 
         modEventBus.addListener(this::registerAttributes);
         modEventBus.addListener(this::fillCreativeTabs);
 
-        NeoForge.EVENT_BUS.register(SovereignGalebladeItem.Events.class);
+        NeoForge.EVENT_BUS.register(SovereignGauntletItem.Events.class);
         NeoForge.EVENT_BUS.register(ZephyrarchCombatEvents.class);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -49,7 +48,7 @@ public final class Zephyrarch {
         if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
             event.accept(ModRegistry.ZEPHYRARCH_SPAWN_EGG.get());
         } else if (event.getTabKey() == CreativeModeTabs.COMBAT) {
-            event.accept(ModRegistry.SOVEREIGN_GALEBLADE.get());
+            event.accept(ModRegistry.SOVEREIGN_GAUNTLET.get());
         }
     }
 }

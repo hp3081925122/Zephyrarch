@@ -2,20 +2,23 @@
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
   "pattern": [
-    " C ",
-    " C ",
-    " R "
+    "BHB",
+    "BCB",
+    " C "
   ],
   "key": {
+    "H": {
+      "item": "minecraft:heavy_core"
+    },
     "C": {
       "item": "zephyrarch:zephyr_core"
     },
-    "R": {
+    "B": {
       "item": "minecraft:breeze_rod"
     }
   },
   "result": {
-    "id": "zephyrarch:sovereign_galeblade",
+    "id": "zephyrarch:sovereign_gauntlet",
     "count": 1
   }
 }

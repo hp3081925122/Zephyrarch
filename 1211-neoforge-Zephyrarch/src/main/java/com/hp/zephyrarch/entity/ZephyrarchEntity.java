@@ -1189,7 +1189,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         }
     }
 
-    /** 12. 气旋囚笼：第 20 tick 以目标为圆心生成风墙，第 30、45、60 tick 发射风暴球。 */
+    /** 12. 气旋囚笼：第 20 tick 以目标为圆心生成风墙，第 28、40、52 tick 发射风暴球。 */
     private void tickCycloneCage(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 1) {
@@ -1209,7 +1209,8 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             this.entityData.set(DATA_CAGE_CENTER, new Vector3f((float) cageCenter.x, (float) cageCenter.y, (float) cageCenter.z));
             this.entityData.set(DATA_CAGE_TICKS, this.cageTicks);
         }
-        if ((t == 30 || t == 45 || t == 60) && target != null && this.cageTicks > 0) {
+        // 与 cyclone_cage 动画的三次推掌对齐：1.4 秒右手、2.0 秒左手、2.6 秒双手
+        if ((t == 28 || t == 40 || t == 52) && target != null && this.cageTicks > 0) {
             Vec3 from = position().add(forward().scale(0.8D)).add(0.0D, 2.0D, 0.0D);
             Vec3 dir = target.getBoundingBox().getCenter().subtract(from);
             ZephyrChargeEntity orb = new ZephyrChargeEntity(level, this)
