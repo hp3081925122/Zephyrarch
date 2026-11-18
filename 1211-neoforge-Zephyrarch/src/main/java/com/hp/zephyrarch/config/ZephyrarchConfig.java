@@ -31,6 +31,7 @@ public final class ZephyrarchConfig {
     public static final ModConfigSpec.DoubleValue CAGE_ORB_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue CAGE_HEALTH_RATIO;
     public static final ModConfigSpec.DoubleValue HOVER_HEIGHT;
+    public static final ModConfigSpec.DoubleValue WIND_DASH_TARGET_DISTANCE;
     public static final ModConfigSpec.DoubleValue KNOCKBACK_SCALE;
     private static final ModConfigSpec.IntValue[] COOLDOWNS = new ModConfigSpec.IntValue[ZephyrarchAttack.values().length];
 
@@ -95,6 +96,10 @@ public final class ZephyrarchConfig {
         HOVER_HEIGHT = builder
                 .comment("二阶段悬浮离地高度 (格) / Phase 2 hover height in blocks")
                 .defineInRange("hoverHeight", 1.5D, 0.0D, 6.0D);
+
+        WIND_DASH_TARGET_DISTANCE = builder
+                .comment("二阶段风遁后撤期望拉开到的目标水平距离 (格，会根据当前距离与地形障碍动态计算后撤步长) / Desired horizontal distance to target after Phase 2 Wind Dash (dash distance adapts dynamically to current distance and terrain)")
+                .defineInRange("windDashTargetDistance", 11.0D, 6.0D, 20.0D);
 
         KNOCKBACK_SCALE = builder
                 .comment("技能击退力度全局缩放系数 (实际击退还会受目标击退抗性减免) / Global knockback scale for skills (actual knockback is also reduced by target knockback resistance)")

@@ -2,6 +2,7 @@ package com.hp.zephyrarch.entity;
 
 import com.hp.zephyrarch.config.ZephyrarchConfig;
 import com.hp.zephyrarch.event.ZephyrarchCombatEvents;
+import com.hp.zephyrarch.network.ZephyrWorldVfxPayload;
 import com.hp.zephyrarch.registry.ModRegistry;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -36,13 +37,10 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 
-/**
- * 罡风君主的风元素投射物。风弹连射（直线）和气旋囚笼的风暴球（缓慢追踪、可被打掉）共用这一个类，
- * 由 {@link #configure} 设定伤害、爆炸半径、寿命和追踪参数。
- */
 public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
     private static final RawAnimation SPIN = RawAnimation.begin().thenLoop("animation.zephyr_charge.spin");
     private static final EntityDataAccessor<Float> DATA_SCALE = SynchedEntityData.defineId(ZephyrChargeEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Boolean> DATA_HOMING = SynchedEntityData.defineId(ZephyrChargeEntity.class, EntityDataSerializers.BOOLEAN);
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     public final Deque<Vec3> clientTrail = new ArrayDeque<>(12);
@@ -74,11 +72,11 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
         return this;
     }
 
-    /** 让投射物缓慢追踪目标，并且可以被玩家一击打掉。 */
     public ZephyrChargeEntity homing(LivingEntity target, float turnRateDeg) {
         this.homingTargetId = target.getId();
         this.turnRateDeg = turnRateDeg;
         this.hittable = true;
+        this.entityData.set(DATA_HOMING, true);
         return this;
     }
 
@@ -86,9 +84,14 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
         return this.entityData.get(DATA_SCALE);
     }
 
+    public boolean isHomingOrb() {
+        return this.entityData.get(DATA_HOMING);
+    }
+
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(DATA_SCALE, 1.0F);
+        builder.define(DATA_HOMING, false);
     }
 
     @Override
@@ -137,7 +140,6 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
                 clientTrail.removeLast();
             }
             clientTrail.addFirst(position().add(0.0D, 0.25D, 0.0D));
-            level().addParticle(ParticleTypes.SMALL_GUST, getX(), getY() + 0.15D, getZ(), 0.0D, 0.0D, 0.0D);
         }
     }
 
@@ -149,9 +151,7 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
     @Override
     public boolean hurt(DamageSource source, float amount) {
         if (hittable && !level().isClientSide && source.getEntity() instanceof Player) {
-            if (level() instanceof ServerLevel serverLevel) {
-                serverLevel.sendParticles(ParticleTypes.POOF, getX(), getY() + 0.2D, getZ(), 8, 0.2D, 0.2D, 0.2D, 0.04D);
-            }
+            ZephyrWorldVfxPayload.sendPoint(this, ZephyrWorldVfxPayload.KIND_CHARGE_BURST, position().add(0.0D, 0.25D, 0.0D), 1.15F, 10);
             playSound(SoundEvents.WIND_CHARGE_BURST.value(), 0.8F, 1.5F);
             discard();
             return true;
@@ -161,7 +161,7 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
 
     @Override
     protected boolean canHitEntity(Entity target) {
-        if (!super.canHitEntity(target) || target instanceof ZephyrChargeEntity || target instanceof ZephyrTwisterEntity) {
+        if (!super.canHitEntity(target) || target instanceof ZephyrChargeEntity || target instanceof ZephyrTwisterEntity || target instanceof ZephyrBladeEntity) {
             return false;
         }
         Entity owner = getOwner();
@@ -197,8 +197,9 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
         float damage = (float) (attack * damageMultiplier);
         DamageSource source = livingOwner != null ? damageSources().mobProjectile(this, livingOwner) : damageSources().magic();
 
-        serverLevel.sendParticles(blastRadius > 2.0D ? ParticleTypes.GUST_EMITTER_SMALL : ParticleTypes.GUST, getX(), getY() + 0.2D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
-        serverLevel.sendParticles(ParticleTypes.CLOUD, getX(), getY() + 0.2D, getZ(), 8, 0.3D, 0.2D, 0.3D, 0.06D);
+        ZephyrWorldVfxPayload.sendPoint(this, ZephyrWorldVfxPayload.KIND_CHARGE_BURST,
+                position().add(0.0D, 0.2D, 0.0D), (float) blastRadius, blastRadius >= 2.0D ? 14 : 10);
+        serverLevel.sendParticles(ParticleTypes.GUST, getX(), getY() + 0.2D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
         serverLevel.playSound(null, getX(), getY(), getZ(), SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), SoundSource.HOSTILE, 1.1F, 0.95F + random.nextFloat() * 0.2F);
 
         AABB area = getBoundingBox().inflate(blastRadius);
@@ -259,6 +260,7 @@ public final class ZephyrChargeEntity extends Projectile implements GeoEntity {
             entityData.set(DATA_SCALE, tag.getFloat("Scale"));
         }
         hittable = tag.getBoolean("Hittable");
+        entityData.set(DATA_HOMING, hittable);
     }
 
     @Override

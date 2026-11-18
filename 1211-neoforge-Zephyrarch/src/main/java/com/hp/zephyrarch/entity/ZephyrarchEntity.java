@@ -2,11 +2,10 @@ package com.hp.zephyrarch.entity;
 
 import com.hp.zephyrarch.config.ZephyrarchConfig;
 import com.hp.zephyrarch.event.ZephyrarchCombatEvents;
+import com.hp.zephyrarch.network.ZephyrWorldVfxPayload;
 import com.hp.zephyrarch.registry.ModSounds;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
-import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -70,10 +69,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * 罡风君主。第一条命只用近战（6 招），死亡后回满血进入二阶段，只用远程（6 招）并悬浮拉开距离。
- * 技能判定全部按 attackTick 在服务端结算，时间点与动画命中帧对齐，详见项目根目录的技能重设计文档。
- */
 public final class ZephyrarchEntity extends Monster implements GeoEntity {
     public static final String BAR_KEY = "bossbar.zephyrarch.zephyrarch";
     public static final double LANCE_RANGE = 24.0D;
@@ -84,18 +79,18 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final String NBT_CONFIG_APPLIED = "ConfigAttributesApplied";
     private static final String NBT_PHASE2 = "Phase2Triggered";
-    private static final DustParticleOptions WARN_DUST = new DustParticleOptions(new Vector3f(1.0F, 0.25F, 0.2F), 1.6F);
+    private static final double[] WIND_DASH_STEP_WEIGHTS = {0.26D, 0.22D, 0.18D, 0.14D, 0.10D, 0.06D, 0.04D};
 
     private static final EntityDataAccessor<Integer> DATA_ATTACK = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ATTACK_SERIAL = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_PHASE2 = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DATA_RAPID_COMBAT = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.BOOLEAN);
-    /** 罡风长枪：0 无，1 瞄准中，2 已锁定，3 发射中。 */
     private static final EntityDataAccessor<Integer> DATA_LANCE_STATE = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.INT);
-    /** 罡风长枪光束向量（世界坐标，从胸口出发，长度即光束长度）。 */
     private static final EntityDataAccessor<Vector3f> DATA_LANCE_VEC = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.VECTOR3);
     private static final EntityDataAccessor<Vector3f> DATA_CAGE_CENTER = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.VECTOR3);
     private static final EntityDataAccessor<Integer> DATA_CAGE_TICKS = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Vector3f> DATA_SKILL_VEC = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.VECTOR3);
+    private static final EntityDataAccessor<Integer> DATA_GRABBED_ID = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.INT);
 
     private static final RawAnimation ANIM_VORTEX = RawAnimation.begin().thenLoop("animation.zephyrarch.vortex_spin");
     private static final RawAnimation ANIM_IDLE = RawAnimation.begin().thenLoop("animation.zephyrarch.idle");
@@ -128,7 +123,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     private int farFromTargetTicks;
     private float lockedYaw;
 
-    // 技能运行时状态（不存档：读档后技能会重新开始选择）
     private Vec3 rushDir = Vec3.ZERO;
     private boolean rushStopped;
     private final Set<Integer> rushHit = new HashSet<>();
@@ -144,6 +138,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     private int cageTicks;
     private final Set<Integer> cageInside = new HashSet<>();
     private final Map<Integer, Integer> cageLastHit = new HashMap<>();
+    private Vec3 windDashTotalVec = Vec3.ZERO;
 
     private int clientLastSerial = -1;
     private int clientVfxSerial = -1;
@@ -185,6 +180,8 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         builder.define(DATA_LANCE_VEC, new Vector3f());
         builder.define(DATA_CAGE_CENTER, new Vector3f());
         builder.define(DATA_CAGE_TICKS, 0);
+        builder.define(DATA_SKILL_VEC, new Vector3f());
+        builder.define(DATA_GRABBED_ID, -1);
     }
 
     @Override
@@ -220,8 +217,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         return true;
     }
 
-    // ===== 同步数据访问（客户端渲染也会用） =====
-
     public ZephyrarchAttack getAttack() {
         return ZephyrarchAttack.byId(this.entityData.get(DATA_ATTACK));
     }
@@ -256,6 +251,15 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         return new Vec3(v.x, v.y, v.z);
     }
 
+    public Vec3 getSkillVec() {
+        Vector3f v = this.entityData.get(DATA_SKILL_VEC);
+        return new Vec3(v.x, v.y, v.z);
+    }
+
+    public int getGrabbedEntityId() {
+        return this.entityData.get(DATA_GRABBED_ID);
+    }
+
     public float getActionSpeedMultiplier() {
         if (getAttack() == ZephyrarchAttack.PHASE_SHIFT) {
             return 1.0F;
@@ -275,6 +279,10 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         return Math.max(1.0F, (float) (this.getMaxHealth() * ratio));
     }
 
+    private void setSkillVec(Vec3 v) {
+        this.entityData.set(DATA_SKILL_VEC, new Vector3f((float) v.x, (float) v.y, (float) v.z));
+    }
+
     private void startAttack(ZephyrarchAttack next) {
         ZephyrarchAttack prev = getAttack();
         this.entityData.set(DATA_ATTACK, next.id);
@@ -291,12 +299,12 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         }
         if (prev == ZephyrarchAttack.GALE_GRAB) {
             this.grabbedId = -1;
+            this.entityData.set(DATA_GRABBED_ID, -1);
         }
         this.attackTick = 0;
         this.attackStepAccumulator = 0.0D;
     }
 
-    /** 转身面向目标，并记住朝向；技能期间每 tick 都会把身体固定在这个朝向。 */
     private void faceTarget() {
         LivingEntity target = this.getTarget();
         if (target != null && target.isAlive()) {
@@ -348,18 +356,15 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        boolean result;
         if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
             this.bypassKillInProgress = true;
             try {
-                result = super.hurt(source, amount);
+                return super.hurt(source, amount);
             } finally {
                 this.bypassKillInProgress = false;
             }
-        } else {
-            result = super.hurt(source, amount);
         }
-        return result;
+        return super.hurt(source, amount);
     }
 
     @Override
@@ -404,7 +409,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         startAttack(ZephyrarchAttack.PHASE_SHIFT);
 
         if (this.level() instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(ParticleTypes.GUST_EMITTER_LARGE, getX(), getY() + 1.6D, getZ(), 3, 0.5D, 0.5D, 0.5D, 0.0D);
             serverLevel.sendParticles(ParticleTypes.FLASH, getX(), getY() + 1.8D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
         playBossSound(ModSounds.PHASE_SHIFT.get(), 2.6F, 1.0F);
@@ -436,8 +440,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     private void playBossSound(SoundEvent sound, float volume, float pitch) {
         this.level().playSound(null, getX(), getY() + 1.5D, getZ(), sound, SoundSource.HOSTILE, volume, pitch);
     }
-
-    // ===== 主循环 =====
 
     @Override
     public void tick() {
@@ -473,7 +475,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             this.globalAttackDelay = Math.max(0, this.globalAttackDelay - cdDecrement);
         }
 
-        if (hovering) {
+        if (hovering && current != ZephyrarchAttack.WIND_DASH) {
             tickHover(current);
         }
 
@@ -497,17 +499,21 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     }
 
     private void finishAttack() {
+        ZephyrarchAttack finished = getAttack();
         startAttack(ZephyrarchAttack.NONE);
-        int baseDelay = isPhase2() ? 30 : 20;
+        if (finished == ZephyrarchAttack.WIND_DASH) {
+            this.globalAttackDelay = Math.min(this.globalAttackDelay, isRapidCombat() ? 3 : 6);
+            return;
+        }
+        int baseDelay = isPhase2() ? 28 : 20;
         if (isRapidCombat()) {
             baseDelay = Math.max(2, (int) Math.round(baseDelay * ZephyrarchConfig.NO_PLAYER_COOLDOWN_SCALE.get() * 0.5D));
         } else {
-            baseDelay += this.random.nextInt(isPhase2() ? 6 : 11);
+            baseDelay += this.random.nextInt(isPhase2() ? 7 : 11);
         }
         this.globalAttackDelay = baseDelay;
     }
 
-    /** 二阶段悬浮：竖直方向贴住“地面 + 悬浮高度”，水平方向与目标保持 8–16 格。 */
     private void tickHover(ZephyrarchAttack current) {
         double groundY = findGroundY();
         double wantY = groundY + ZephyrarchConfig.HOVER_HEIGHT.get();
@@ -523,19 +529,21 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             double dist = flat.length();
             if (dist > 1.0E-3D) {
                 Vec3 dir = flat.scale(1.0D / dist);
-                double speed = getAttributeValue(Attributes.MOVEMENT_SPEED) * 0.6D;
+                double baseSpeed = getAttributeValue(Attributes.MOVEMENT_SPEED);
+                double sideSign = ((this.tickCount / 80) % 2 == 0) ? 1.0D : -1.0D;
+                Vec3 sideVec = new Vec3(-dir.z, 0.0D, dir.x).scale(sideSign);
                 Vec3 want;
                 if (dist > 16.0D) {
-                    want = dir.scale(speed);
-                } else if (dist < 8.0D) {
-                    want = dir.scale(-speed * 0.8D);
+                    want = dir.scale(baseSpeed * 0.68D).add(sideVec.scale(baseSpeed * 0.18D));
+                } else if (dist < 8.5D) {
+                    double urgency = Mth.clamp((8.5D - dist) / 6.0D, 0.0D, 1.0D);
+                    double retreatSpeed = baseSpeed * Mth.lerp(urgency, 0.62D, 1.08D);
+                    want = dir.scale(-retreatSpeed).add(sideVec.scale(baseSpeed * 0.36D));
                 } else {
-                    // 在合适距离上绕目标缓慢横移
-                    double sideSign = ((this.tickCount / 80) % 2 == 0) ? 1.0D : -1.0D;
-                    want = new Vec3(-dir.z, 0.0D, dir.x).scale(speed * 0.45D * sideSign);
+                    want = sideVec.scale(baseSpeed * 0.32D);
                 }
-                hx = Mth.lerp(0.2D, m.x, want.x);
-                hz = Mth.lerp(0.2D, m.z, want.z);
+                hx = Mth.lerp(0.24D, m.x, want.x);
+                hz = Mth.lerp(0.24D, m.z, want.z);
             }
             this.getLookControl().setLookAt(target, 30.0F, 30.0F);
         }
@@ -565,43 +573,20 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     }
 
     private void spawnAmbientClientParticles() {
-        if (this.random.nextInt(2) == 0) {
+        if (this.random.nextInt(4) == 0) {
             double angle = this.random.nextDouble() * Math.PI * 2.0D;
-            double rad = 0.85D + this.random.nextDouble() * 0.75D;
+            double rad = 0.90D + this.random.nextDouble() * 0.65D;
             double px = getX() + Math.cos(angle) * rad;
             double pz = getZ() + Math.sin(angle) * rad;
-            double py = getY() + 0.15D + this.random.nextDouble() * 2.3D;
-            this.level().addParticle(ParticleTypes.SMALL_GUST, px, py, pz, -Math.sin(angle) * 0.10D, 0.05D, Math.cos(angle) * 0.10D);
-        }
-        if (isPhase2()) {
-            double spinAngle = (this.tickCount * 0.32D) % (Math.PI * 2.0D);
-            for (int i = 0; i < 2; i++) {
-                double a = spinAngle + i * Math.PI;
-                double r = 1.35D;
-                this.level().addParticle(ParticleTypes.ELECTRIC_SPARK,
-                        getX() + Math.cos(a) * r,
-                        getY() + 1.5D + Math.sin(this.tickCount * 0.15D + i) * 0.45D,
-                        getZ() + Math.sin(a) * r,
-                        -Math.sin(a) * 0.06D, 0.04D, Math.cos(a) * 0.06D);
-            }
-            if (this.tickCount % 3 == 0) {
-                this.level().addParticle(ParticleTypes.CLOUD,
-                        getX() + (random.nextDouble() - 0.5D) * 1.8D,
-                        getY() - 0.2D,
-                        getZ() + (random.nextDouble() - 0.5D) * 1.8D,
-                        0.0D, -0.05D, 0.0D);
-            }
+            double py = getY() + 0.20D + this.random.nextDouble() * 2.1D;
+            this.level().addParticle(ParticleTypes.SMALL_GUST, px, py, pz, -Math.sin(angle) * 0.08D, 0.04D, Math.cos(angle) * 0.08D);
         }
     }
 
-    // ===== 通用判定 =====
-
-    /** 前方扇形攻击。cosHalf 为扇形半角的余弦（90° 扇形 → cos45°）。 */
     private int strikeArc(ServerLevel level, double reach, double cosHalf, double mult, double kb, double lift) {
         Vec3 look = forward();
-        Vec3 center = position().add(look.scale(reach * 0.5D)).add(0.0D, 1.6D, 0.0D);
-        level.sendParticles(ParticleTypes.GUST, center.x, center.y, center.z, 3, 0.6D, 0.3D, 0.6D, 0.0D);
-        level.sendParticles(ParticleTypes.SWEEP_ATTACK, center.x, center.y, center.z, 2, 0.35D, 0.15D, 0.35D, 0.0D);
+        Vec3 center = position().add(look.scale(reach * 0.5D)).add(0.0D, 1.5D, 0.0D);
+        level.sendParticles(ParticleTypes.SMALL_GUST, center.x, center.y, center.z, 2, 0.35D, 0.2D, 0.35D, 0.01D);
         int hits = 0;
         for (LivingEntity victim : victimsInRadius(level, reach + 1.0D, 2.0D)) {
             Vec3 to = victim.position().subtract(position());
@@ -638,7 +623,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         return Math.sqrt(dx * dx + dz * dz);
     }
 
-    /** 以当前位置为中心、背离 Boss 的击退。 */
     private boolean applyScaledAttack(LivingEntity victim, double multiplier, double baseHorizKb, double baseLiftY) {
         return applyScaledAttackFrom(victim, position(), multiplier, baseHorizKb, baseLiftY);
     }
@@ -664,15 +648,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         return true;
     }
 
-    private void ring(ServerLevel level, ParticleOptions particle, Vec3 center, double radius, int points, double yOff) {
-        for (int i = 0; i < points; i++) {
-            double a = Math.PI * 2.0D * i / points;
-            level.sendParticles(particle, center.x + Math.cos(a) * radius, center.y + yOff, center.z + Math.sin(a) * radius, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-        }
-    }
-
-    // ===== 技能分发 =====
-
     private void tickActiveSkill(ServerLevel level, ZephyrarchAttack attack) {
         LivingEntity target = this.getTarget();
         if (target != null && !target.isAlive()) {
@@ -696,19 +671,11 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             case BOOMERANG_BLADES -> tickBoomerangBlades(level, target);
             case CYCLONE_CAGE -> tickCycloneCage(level, target);
             case WIND_DASH -> tickWindDash(level, target);
-            case STAGGER -> {
-                if (this.attackTick % 6 == 1) {
-                    level.sendParticles(ParticleTypes.CLOUD, getX(), getY() + 2.6D, getZ(), 3, 0.4D, 0.2D, 0.4D, 0.01D);
-                }
-            }
             default -> {
             }
         }
     }
 
-    // ===== 一阶段：近战 =====
-
-    /** 1. 裂风连拳：第 11 tick 右拳、第 23 tick 左拳。 */
     private void tickGaleCombo(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t < 9 || (t > 12 && t < 21)) {
@@ -728,12 +695,8 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         }
     }
 
-    /** 2. 旋臂横扫：0–14 预警，第 17 tick 360° 判定。 */
     private void tickArmSweep(ServerLevel level) {
         int t = this.attackTick;
-        if (t <= 14 && t % 3 == 1) {
-            ring(level, ParticleTypes.CLOUD, position(), 5.0D, 28, 0.1D);
-        }
         if (t == 13) {
             playBossSound(ModSounds.SWEEP_SPIN.get(), 1.8F, 1.0F);
         }
@@ -743,15 +706,10 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                     applyScaledAttack(victim, ZephyrarchConfig.ARM_SWEEP_MULTIPLIER.get(), 1.2D, 0.25D);
                 }
             }
-            for (int i = 0; i < 12; i++) {
-                double a = Math.PI * 2.0D * i / 12.0D;
-                level.sendParticles(ParticleTypes.SWEEP_ATTACK, getX() + Math.cos(a) * 3.2D, getY() + 1.6D, getZ() + Math.sin(a) * 3.2D, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-            }
-            level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, getX(), getY() + 1.4D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
+            level.sendParticles(ParticleTypes.GUST, getX(), getY() + 1.3D, getZ(), 2, 0.5D, 0.1D, 0.5D, 0.0D);
         }
     }
 
-    /** 3. 罡风冲拳：第 12 tick 锁定方向，16–22 冲刺 10 格，第 23 tick 终点拳。 */
     private void tickGaleRush(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 1) {
@@ -761,15 +719,10 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         if (t <= 12) {
             faceTarget();
             this.rushDir = forward();
+            setSkillVec(this.rushDir);
         }
         if (t == 2) {
             playBossSound(ModSounds.RUSH_CHARGE.get(), 1.6F, 1.0F);
-        }
-        if (t <= 15 && t % 2 == 0) {
-            for (int i = 1; i <= 10; i++) {
-                Vec3 p = position().add(this.rushDir.scale(i));
-                level.sendParticles(t > 12 ? WARN_DUST : ParticleTypes.CLOUD, p.x, p.y + 0.15D, p.z, 1, 0.1D, 0.0D, 0.1D, 0.0D);
-            }
         }
         if (t >= 16 && t <= 22) {
             if (t == 16) {
@@ -781,7 +734,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 if (this.horizontalCollision || position().distanceToSqr(before) < 0.25D) {
                     this.rushStopped = true;
                 }
-                level.sendParticles(ParticleTypes.GUST, getX(), getY() + 1.2D, getZ(), 1, 0.2D, 0.3D, 0.2D, 0.0D);
                 Vec3 side = right();
                 for (LivingEntity victim : level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(0.75D, 0.2D, 0.75D), this::canAffectVictim)) {
                     if (this.rushHit.add(victim.getId())) {
@@ -800,12 +752,12 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         }
     }
 
-    /** 4. 天坠锤击：上升 → 第 14 tick 锁定落点并飞过去 → 第 22 tick 落地。 */
     private void tickSkyHammer(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 1) {
             playBossSound(ModSounds.HAMMER_RISE.get(), 1.8F, 1.0F);
             this.hammerTarget = position();
+            setSkillVec(this.hammerTarget);
         }
         if (t <= 10) {
             faceTarget();
@@ -818,6 +770,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                     flat = flat.normalize().scale(6.0D);
                 }
                 this.hammerTarget = new Vec3(getX() + flat.x, wanted.y, getZ() + flat.z);
+                setSkillVec(this.hammerTarget);
             }
             if (t >= 14) {
                 Vec3 flat = new Vec3(this.hammerTarget.x - getX(), 0.0D, this.hammerTarget.z - getZ());
@@ -829,10 +782,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         } else if (t < 22) {
             this.setDeltaMovement(0.0D, -1.6D, 0.0D);
         }
-        if (t >= 14 && t <= 21 && t % 2 == 0) {
-            ring(level, WARN_DUST, this.hammerTarget, 4.0D, 32, 0.15D);
-            ring(level, WARN_DUST, this.hammerTarget, 1.5D, 12, 0.15D);
-        }
         if (t == 22) {
             Vec3 c = new Vec3(getX(), Math.min(getY(), this.hammerTarget.y + 0.5D), getZ());
             for (LivingEntity victim : victimsAround(level, c, 4.0D, 1.5D, 3.0D)) {
@@ -840,14 +789,11 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 double mult = d <= 1.5D ? ZephyrarchConfig.HAMMER_CENTER_MULTIPLIER.get() : ZephyrarchConfig.HAMMER_EDGE_MULTIPLIER.get();
                 applyScaledAttackFrom(victim, c, mult, 0.4D, 0.8D);
             }
-            level.sendParticles(ParticleTypes.EXPLOSION, c.x, c.y + 0.3D, c.z, 3, 1.2D, 0.2D, 1.2D, 0.0D);
-            level.sendParticles(ParticleTypes.GUST_EMITTER_LARGE, c.x, c.y + 0.2D, c.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-            ring(level, ParticleTypes.CLOUD, c, 3.5D, 24, 0.2D);
+            level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, c.x, c.y + 0.25D, c.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
             playBossSound(ModSounds.HAMMER_SLAM.get(), 2.6F, 1.0F);
         }
     }
 
-    /** 5. 擒风摔投：第 10 tick 抓取，11–31 挤压，第 32 tick 甩出。 */
     private void tickGaleGrab(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t < 10) {
@@ -872,6 +818,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 return;
             }
             this.grabbedId = caught.getId();
+            this.entityData.set(DATA_GRABBED_ID, this.grabbedId);
             playBossSound(ModSounds.GRAB_CATCH.get(), 1.8F, 1.0F);
         }
         Entity held = this.grabbedId >= 0 ? level.getEntity(this.grabbedId) : null;
@@ -882,7 +829,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             return;
         }
         if (t < 32) {
-            // 与 gale_grab 动画中右拳的位置对齐：前 1.6 格、右 0.9 格、高 3.2 格
             Vec3 hand = position().add(forward().scale(1.6D)).add(right().scale(0.9D)).add(0.0D, 3.2D - victim.getBbHeight() * 0.5D, 0.0D);
             victim.teleportTo(hand.x, hand.y, hand.z);
             victim.setDeltaMovement(Vec3.ZERO);
@@ -891,7 +837,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             if (t % 5 == 0) {
                 ZephyrarchCombatEvents.applyAntiHealIfEligible(this, victim);
                 victim.hurt(this.damageSources().mobAttack(this), (float) (getAttributeValue(Attributes.ATTACK_DAMAGE) * ZephyrarchConfig.GRAB_SQUEEZE_MULTIPLIER.get()));
-                level.sendParticles(ParticleTypes.GUST, victim.getX(), victim.getY() + victim.getBbHeight() * 0.5D, victim.getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
             }
         } else if (t == 32) {
             Vec3 back = forward().scale(-1.6D);
@@ -900,7 +845,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             victim.setDeltaMovement(back.x * s, 0.9D * s, back.z * s);
             victim.hurtMarked = true;
             playBossSound(ModSounds.GRAB_THROW.get(), 1.8F, 1.0F);
-            this.grabbedId = -1;
+            releaseGrab();
         }
     }
 
@@ -930,9 +875,9 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
 
     private void releaseGrab() {
         this.grabbedId = -1;
+        this.entityData.set(DATA_GRABBED_ID, -1);
     }
 
-    /** 6. 旋涡踏震：8–28 吸引，第 30 tick 冲击。 */
     private void tickVortexStomp(ServerLevel level) {
         int t = this.attackTick;
         if (t == 2) {
@@ -950,42 +895,31 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                     victim.hurtMarked = true;
                 }
             }
-            for (int i = 0; i < 4; i++) {
-                double a = t * 0.45D + i * Math.PI * 0.5D;
-                double r = 6.0D - (t - 8) * 0.22D;
-                level.sendParticles(ParticleTypes.SMALL_GUST, getX() + Math.cos(a) * r, getY() + 0.3D, getZ() + Math.sin(a) * r, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-            }
         }
         if (t == 30) {
             for (LivingEntity victim : victimsAround(level, position(), 3.5D, 1.0D, 3.5D)) {
                 applyScaledAttack(victim, ZephyrarchConfig.STOMP_MULTIPLIER.get(), 1.4D, 0.5D);
             }
-            level.sendParticles(ParticleTypes.GUST_EMITTER_LARGE, getX(), getY() + 0.5D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
-            ring(level, ParticleTypes.GUST, position(), 3.0D, 12, 0.4D);
+            level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, getX(), getY() + 0.5D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
             playBossSound(ModSounds.STOMP_BURST.get(), 2.4F, 1.0F);
         }
     }
 
-    /** 转阶段：第 21 tick 爆发（对应动画 1.05 秒）。 */
     private void tickPhaseShift(ServerLevel level) {
         this.getNavigation().stop();
         this.setDeltaMovement(0.0D, 0.02D, 0.0D);
         if (this.attackTick == 21) {
-            level.sendParticles(ParticleTypes.GUST_EMITTER_LARGE, getX(), getY() + 1.6D, getZ(), 5, 0.9D, 0.6D, 0.9D, 0.0D);
-            level.sendParticles(ParticleTypes.FLASH, getX(), getY() + 1.8D, getZ(), 2, 0.2D, 0.2D, 0.2D, 0.0D);
+            level.sendParticles(ParticleTypes.FLASH, getX(), getY() + 1.8D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
             for (LivingEntity victim : victimsAround(level, position(), 6.0D, 1.5D, 4.0D)) {
                 applyScaledAttack(victim, ZephyrarchConfig.PHASE_SHIFT_BURST_MULTIPLIER.get(), 2.0D, 0.3D);
             }
         }
     }
 
-    // ===== 二阶段：远程 =====
-
     private Vec3 handPos(boolean rightHand) {
         return position().add(forward().scale(1.0D)).add(right().scale(rightHand ? 1.3D : -1.3D)).add(0.0D, 2.3D, 0.0D);
     }
 
-    /** 7. 风弹连射：第 10、16、22、28、34、40 tick 左右手交替发射，后 3 发带提前量。 */
     private void tickGaleBolts(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (target == null) {
@@ -1011,7 +945,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         }
     }
 
-    /** 8. 罡风长枪：1–30 追踪瞄准，第 30 tick 锁定，第 36 tick 发射。 */
     private void tickTempestLance(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 2) {
@@ -1045,11 +978,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                     applyScaledAttackFrom(victim, nearest.subtract(this.lanceDir), ZephyrarchConfig.LANCE_MULTIPLIER.get(), 0.8D, 0.15D);
                 }
             }
-            for (double d = 0.0D; d < this.lanceLength; d += 1.0D) {
-                Vec3 p = origin.add(this.lanceDir.scale(d));
-                level.sendParticles(ParticleTypes.END_ROD, p.x, p.y, p.z, 1, 0.05D, 0.05D, 0.05D, 0.01D);
-            }
-            level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, end.x, end.y, end.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+            ZephyrWorldVfxPayload.sendPoint(this, ZephyrWorldVfxPayload.KIND_CHARGE_BURST, end, 1.75F, 11);
             playBossSound(ModSounds.LANCE_FIRE.get(), 2.6F, 1.0F);
         }
         if (t == 44) {
@@ -1068,7 +997,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         this.entityData.set(DATA_LANCE_VEC, new Vector3f((float) v.x, (float) v.y, (float) v.z));
     }
 
-    /** 9. 风暴之眼：1–20 画预警圈，第 20 tick 召唤 3 个小龙卷。 */
     private void tickStormEye(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 1) {
@@ -1080,16 +1008,14 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                     double r = 3.0D + this.random.nextDouble() * 3.0D;
                     this.stormEyeMarks.add(target.position().add(Math.cos(a) * r, 0.0D, Math.sin(a) * r));
                 }
+                for (Vec3 mark : this.stormEyeMarks) {
+                    ZephyrWorldVfxPayload.sendPoint(this, ZephyrWorldVfxPayload.KIND_STORM_EYE_MARK, mark, 1.5F, 20);
+                }
             }
             playBossSound(ModSounds.RUSH_CHARGE.get(), 1.4F, 1.3F);
         }
         if (target != null && t < 20) {
             faceTarget();
-        }
-        if (t < 20 && t % 2 == 0) {
-            for (Vec3 mark : this.stormEyeMarks) {
-                ring(level, ParticleTypes.CLOUD, mark, 1.5D, 12, 0.1D);
-            }
         }
         if (t == 20) {
             for (Vec3 mark : this.stormEyeMarks) {
@@ -1100,7 +1026,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         }
     }
 
-    /** 10. 天压风柱：施法 30 tick；第 12 tick 起每 7 tick 落一根，共 8 根，每根预警 15 tick。 */
     private void tickDowndraftCast(ServerLevel level, LivingEntity target) {
         if (target != null && this.attackTick < 12) {
             faceTarget();
@@ -1130,6 +1055,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                         p = p.add(Math.cos(a) * r, 0.0D, Math.sin(a) * r);
                     }
                     this.downdrafts.add(new Downdraft(p));
+                    ZephyrWorldVfxPayload.sendPoint(this, ZephyrWorldVfxPayload.KIND_DOWNDRAFT_COLUMN, p, 2.0F, 28);
                     this.downdraftLeft--;
                 }
             }
@@ -1139,46 +1065,41 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             Downdraft d = it.next();
             d.warn--;
             if (d.warn > 0) {
-                if (d.warn % 3 == 0) {
-                    ring(level, ParticleTypes.CLOUD, d.pos, 2.0D, 14, 0.1D);
-                    level.sendParticles(ParticleTypes.CLOUD, d.pos.x, d.pos.y + 8.0D, d.pos.z, 3, 0.8D, 0.3D, 0.8D, 0.0D);
-                }
                 continue;
             }
             for (LivingEntity victim : victimsAround(level, d.pos, 2.0D, 1.0D, 4.5D)) {
                 if (applyScaledAttackFrom(victim, d.pos, ZephyrarchConfig.DOWNDRAFT_MULTIPLIER.get(), 0.15D, 0.0D)) {
                     victim.push(0.0D, -0.6D, 0.0D);
+                    victim.hurtMarked = true;
                 }
             }
-            for (int y = 0; y < 8; y++) {
-                level.sendParticles(ParticleTypes.CLOUD, d.pos.x, d.pos.y + y, d.pos.z, 2, 0.4D, 0.3D, 0.4D, 0.0D);
-            }
-            level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, d.pos.x, d.pos.y + 0.3D, d.pos.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
             level.playSound(null, d.pos.x, d.pos.y, d.pos.z, ModSounds.DOWNDRAFT_IMPACT.get(), SoundSource.HOSTILE, 1.6F, 0.9F + this.random.nextFloat() * 0.2F);
             it.remove();
         }
     }
 
-    /** 11. 回旋风刃：第 12 tick 左右各掷出一把。 */
     private void tickBoomerangBlades(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (target != null && t <= 12) {
             faceTarget();
         }
         if (t == 12 && target != null) {
-            Vec3 toTarget = target.position().subtract(position());
-            Vec3 flat = new Vec3(toTarget.x, 0.0D, toTarget.z);
-            Vec3 dir = flat.lengthSqr() > 1.0E-4D ? flat.normalize() : forward();
-            Vec3 apex = target.position().add(dir.scale(4.0D)).add(0.0D, 1.0D, 0.0D);
+            double hDist = horizontalDist(position(), target.position());
+            Vec3 vel = target.getDeltaMovement();
+            Vec3 lead = new Vec3(vel.x, 0.0D, vel.z).scale(Mth.clamp(hDist * 0.85D, 2.0D, 9.5D));
+            if (lead.length() > 3.2D) {
+                lead = lead.normalize().scale(3.2D);
+            }
+            double hitY = target.getY() + Mth.clamp(target.getBbHeight() * 0.52D, 0.45D, 1.55D);
+            Vec3 crossPoint = new Vec3(target.getX() + lead.x, hitY, target.getZ() + lead.z);
             for (int side = -1; side <= 1; side += 2) {
-                Vec3 start = position().add(right().scale(1.3D * side)).add(0.0D, 1.8D, 0.0D);
-                level.addFreshEntity(new ZephyrBladeEntity(level, this, start, apex, side));
+                Vec3 start = position().add(right().scale(1.25D * side)).add(0.0D, 1.55D, 0.0D);
+                level.addFreshEntity(new ZephyrBladeEntity(level, this, start, crossPoint, target.getId(), side));
             }
             playBossSound(ModSounds.BLADE_THROW.get(), 2.0F, 1.0F);
         }
     }
 
-    /** 12. 气旋囚笼：第 20 tick 以目标为圆心生成风墙，第 28、40、52 tick 发射风暴球。 */
     private void tickCycloneCage(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 1) {
@@ -1198,9 +1119,8 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             this.entityData.set(DATA_CAGE_CENTER, new Vector3f((float) cageCenter.x, (float) cageCenter.y, (float) cageCenter.z));
             this.entityData.set(DATA_CAGE_TICKS, this.cageTicks);
         }
-        // 与 cyclone_cage 动画的三次推掌对齐：1.4 秒右手、2.0 秒左手、2.6 秒双手
         if ((t == 28 || t == 40 || t == 52) && target != null && this.cageTicks > 0) {
-            Vec3 from = position().add(forward().scale(0.8D)).add(0.0D, 2.0D, 0.0D);
+            Vec3 from = t == 28 ? handPos(true) : (t == 40 ? handPos(false) : position().add(forward().scale(0.95D)).add(0.0D, 2.15D, 0.0D));
             Vec3 dir = target.getBoundingBox().getCenter().subtract(from);
             ZephyrChargeEntity orb = new ZephyrChargeEntity(level, this)
                     .configure(ZephyrarchConfig.CAGE_ORB_MULTIPLIER.get(), 2.5D, 0.6D, 80, 1.5F)
@@ -1217,17 +1137,8 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             return;
         }
         this.cageTicks--;
-        if (this.cageTicks % 20 == 0 || this.cageTicks == 0) {
+        if (this.cageTicks % 10 == 0 || this.cageTicks == 0) {
             this.entityData.set(DATA_CAGE_TICKS, this.cageTicks);
-        }
-        if (this.cageTicks % 2 == 0) {
-            for (int i = 0; i < 20; i++) {
-                double a = this.random.nextDouble() * Math.PI * 2.0D;
-                double y = this.random.nextDouble() * CAGE_HEIGHT;
-                level.sendParticles(i % 5 == 0 ? ParticleTypes.GUST : ParticleTypes.CLOUD,
-                        cageCenter.x + Math.cos(a) * CAGE_RADIUS, cageCenter.y + y, cageCenter.z + Math.sin(a) * CAGE_RADIUS,
-                        1, 0.0D, 0.0D, 0.0D, 0.0D);
-            }
         }
         float damage = (float) (getAttributeValue(Attributes.ATTACK_DAMAGE) * ZephyrarchConfig.CAGE_WALL_MULTIPLIER.get());
         Iterator<Integer> it = this.cageInside.iterator();
@@ -1257,21 +1168,107 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         }
     }
 
-    /** 二阶段风遁：被贴身时向后闪开 6 格。 */
+    private void planWindDash(LivingEntity target) {
+        double desired = ZephyrarchConfig.WIND_DASH_TARGET_DISTANCE.get();
+        Vec3 awayBase;
+        double curDist;
+        double closingBonus = 0.0D;
+        if (target != null && target.isAlive()) {
+            Vec3 fromTarget = new Vec3(getX() - target.getX(), 0.0D, getZ() - target.getZ());
+            curDist = fromTarget.length();
+            awayBase = curDist > 1.0E-3D ? fromTarget.scale(1.0D / curDist) : forward().scale(-1.0D);
+            Vec3 targetHorizVel = new Vec3(target.getDeltaMovement().x, 0.0D, target.getDeltaMovement().z);
+            double closing = Math.max(0.0D, targetHorizVel.dot(awayBase));
+            closingBonus = Mth.clamp(closing * 6.0D, 0.0D, 2.5D);
+        } else {
+            curDist = 3.0D;
+            awayBase = forward().scale(-1.0D);
+        }
+
+        double idealDash = Mth.clamp((desired - curDist) + closingBonus, 3.8D, 10.5D);
+        double sidePref = this.random.nextBoolean() ? 1.0D : -1.0D;
+        double[] candidateAngles = {
+                0.0D,
+                32.0D * sidePref, -32.0D * sidePref,
+                65.0D * sidePref, -65.0D * sidePref,
+                100.0D * sidePref, -100.0D * sidePref,
+                135.0D * sidePref, -135.0D * sidePref
+        };
+
+        Vec3 bestVec = awayBase.scale(idealDash);
+        double bestScore = -1.0E9D;
+        double chosenAngle = 0.0D;
+
+        for (double deg : candidateAngles) {
+            double rad = deg * Mth.DEG_TO_RAD;
+            double cos = Math.cos(rad);
+            double sin = Math.sin(rad);
+            Vec3 dir = new Vec3(awayBase.x * cos - awayBase.z * sin, 0.0D, awayBase.x * sin + awayBase.z * cos);
+
+            double clear = probeClearDistance(dir, idealDash);
+            if (clear < 1.2D) {
+                continue;
+            }
+            Vec3 endPos = position().add(dir.scale(clear));
+            double newDist = target != null ? horizontalDist(endPos, target.position()) : clear;
+            double score = newDist - Math.abs(newDist - desired) * 0.45D - Math.abs(deg) * 0.022D
+                    + (clear >= idealDash * 0.75D ? 1.4D : 0.0D);
+            if (score > bestScore) {
+                bestScore = score;
+                bestVec = dir.scale(clear);
+                chosenAngle = deg;
+            }
+        }
+
+        double groundAtEnd = findGroundYAt(position().add(bestVec));
+        double wantEndY = groundAtEnd + ZephyrarchConfig.HOVER_HEIGHT.get();
+        double dy = Mth.clamp(wantEndY - getY(), -1.5D, 2.0D);
+        this.windDashTotalVec = new Vec3(bestVec.x, dy, bestVec.z);
+        setSkillVec(this.windDashTotalVec);
+
+        LOGGER.debug("Zephyrarch [id={}] planned Wind Dash: curDist={}, idealDash={}, actualLen={}, angleDeg={}",
+                this.getId(), String.format("%.2f", curDist), String.format("%.2f", idealDash),
+                String.format("%.2f", bestVec.length()), chosenAngle);
+    }
+
+    private double probeClearDistance(Vec3 dir, double maxDist) {
+        AABB baseBox = this.getBoundingBox().deflate(0.05D);
+        double clear = 0.0D;
+        for (double d = 0.75D; d <= maxDist + 0.35D; d += 0.75D) {
+            double testD = Math.min(d, maxDist);
+            if (this.level().noCollision(this, baseBox.move(dir.scale(testD)))
+                    || this.level().noCollision(this, baseBox.move(dir.x * testD, 0.75D, dir.z * testD))) {
+                clear = testD;
+            } else {
+                break;
+            }
+        }
+        return clear;
+    }
+
+    private double findGroundYAt(Vec3 pos) {
+        Vec3 from = pos.add(0.0D, 1.5D, 0.0D);
+        HitResult hit = this.level().clip(new ClipContext(from, from.add(0.0D, -14.0D, 0.0D),
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, this));
+        return hit.getType() == HitResult.Type.MISS ? getY() - ZephyrarchConfig.HOVER_HEIGHT.get() : hit.getLocation().y;
+    }
+
     private void tickWindDash(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 1) {
+            planWindDash(target);
             playBossSound(ModSounds.WIND_DASH.get(), 1.8F, 1.0F);
-            level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, getX(), getY() + 1.0D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
+            ZephyrWorldVfxPayload.sendDirected(this, ZephyrWorldVfxPayload.KIND_WIND_DASH_TRAIL, position(), this.windDashTotalVec, 1.0F, 12);
         }
-        if (t <= 5) {
-            Vec3 away = forward().scale(-1.2D);
-            this.move(MoverType.SELF, away);
-            level.sendParticles(ParticleTypes.CLOUD, getX(), getY() + 1.2D, getZ(), 2, 0.3D, 0.4D, 0.3D, 0.0D);
+        if (t >= 1 && t <= WIND_DASH_STEP_WEIGHTS.length) {
+            Vec3 step = this.windDashTotalVec.scale(WIND_DASH_STEP_WEIGHTS[t - 1]);
+            this.move(MoverType.SELF, step);
+        }
+        this.setDeltaMovement(Vec3.ZERO);
+        if (target != null && target.isAlive()) {
+            faceTarget();
         }
     }
-
-    // ===== 杂项覆写 =====
 
     @Override
     public boolean isInvulnerableTo(DamageSource source) {
@@ -1372,8 +1369,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         return this.cache;
     }
 
-    // ===== 选招 AI =====
-
     private final class CombatGoal extends Goal {
         CombatGoal() {
             setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
@@ -1402,29 +1397,29 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 return;
             }
             ZephyrarchEntity.this.getLookControl().setLookAt(target, 30.0F, 30.0F);
-            double dist = Math.sqrt(ZephyrarchEntity.this.distanceToSqr(target));
+            double horizDist = horizontalDist(position(), target.position());
 
             if (isPhase2()) {
                 ZephyrarchEntity.this.getNavigation().stop();
-                if (dist < 5.0D && skillCooldowns[ZephyrarchAttack.WIND_DASH.id] <= 0) {
+                if (horizDist < 6.0D && skillCooldowns[ZephyrarchAttack.WIND_DASH.id] <= 0) {
                     useSkill(ZephyrarchAttack.WIND_DASH);
                     return;
                 }
                 if (globalAttackDelay <= 0) {
-                    selectRanged(target, dist);
+                    selectRanged(target, horizDist);
                 }
                 return;
             }
 
-            if (dist > 3.5D) {
+            if (horizDist > 3.5D) {
                 double moveMult = isRapidCombat() ? 1.35D : 1.08D;
                 ZephyrarchEntity.this.getNavigation().moveTo(target, moveMult);
             } else {
                 ZephyrarchEntity.this.getNavigation().stop();
             }
-            farFromTargetTicks = dist > 10.0D ? farFromTargetTicks + 1 : 0;
+            farFromTargetTicks = horizDist > 10.0D ? farFromTargetTicks + 1 : 0;
             if (globalAttackDelay <= 0) {
-                selectMelee(target, dist);
+                selectMelee(target, horizDist);
             }
         }
 
@@ -1457,28 +1452,48 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             pick(pool, weights);
         }
 
-        private void selectRanged(LivingEntity target, double dist) {
+        private void selectRanged(LivingEntity target, double horizDist) {
             List<ZephyrarchAttack> pool = new ArrayList<>();
             List<Integer> weights = new ArrayList<>();
             boolean cageUnlocked = getHealth() <= getMaxHealth() * ZephyrarchConfig.CAGE_HEALTH_RATIO.get();
-            if (dist < 8.0D) {
-                add(pool, weights, ZephyrarchAttack.BOOMERANG_BLADES, 40);
-                add(pool, weights, ZephyrarchAttack.GALE_BOLTS, 60);
-            } else if (dist <= 16.0D) {
-                add(pool, weights, ZephyrarchAttack.GALE_BOLTS, 25);
-                add(pool, weights, ZephyrarchAttack.TEMPEST_LANCE, 20);
-                add(pool, weights, ZephyrarchAttack.STORM_EYE, 15);
-                add(pool, weights, ZephyrarchAttack.DOWNDRAFT, 15);
-                add(pool, weights, ZephyrarchAttack.BOOMERANG_BLADES, 15);
+
+            if (horizDist < 8.0D) {
+                add(pool, weights, ZephyrarchAttack.GALE_BOLTS, 28);
+                add(pool, weights, ZephyrarchAttack.BOOMERANG_BLADES, 22);
+                add(pool, weights, ZephyrarchAttack.STORM_EYE, 22);
+                add(pool, weights, ZephyrarchAttack.DOWNDRAFT, 18);
+                add(pool, weights, ZephyrarchAttack.TEMPEST_LANCE, 10);
                 if (cageUnlocked) {
-                    add(pool, weights, ZephyrarchAttack.CYCLONE_CAGE, 10);
+                    add(pool, weights, ZephyrarchAttack.CYCLONE_CAGE, 14);
                 }
-            } else if (dist <= 32.0D) {
-                add(pool, weights, ZephyrarchAttack.TEMPEST_LANCE, 40);
-                add(pool, weights, ZephyrarchAttack.DOWNDRAFT, 40);
-                add(pool, weights, ZephyrarchAttack.STORM_EYE, 20);
+            } else if (horizDist <= 16.0D) {
+                add(pool, weights, ZephyrarchAttack.GALE_BOLTS, 24);
+                add(pool, weights, ZephyrarchAttack.TEMPEST_LANCE, 20);
+                add(pool, weights, ZephyrarchAttack.STORM_EYE, 16);
+                add(pool, weights, ZephyrarchAttack.DOWNDRAFT, 16);
+                add(pool, weights, ZephyrarchAttack.BOOMERANG_BLADES, 16);
+                if (cageUnlocked) {
+                    add(pool, weights, ZephyrarchAttack.CYCLONE_CAGE, 12);
+                }
+            } else if (horizDist <= 38.0D) {
+                add(pool, weights, ZephyrarchAttack.TEMPEST_LANCE, 38);
+                add(pool, weights, ZephyrarchAttack.DOWNDRAFT, 34);
+                add(pool, weights, ZephyrarchAttack.STORM_EYE, 18);
+                add(pool, weights, ZephyrarchAttack.GALE_BOLTS, 10);
+            }
+
+            if (pool.isEmpty() && lastSkill != ZephyrarchAttack.NONE && isPhase2Skill(lastSkill) && ready(lastSkill)) {
+                pool.add(lastSkill);
+                weights.add(10);
             }
             pick(pool, weights);
+        }
+
+        private boolean isPhase2Skill(ZephyrarchAttack attack) {
+            return switch (attack) {
+                case GALE_BOLTS, TEMPEST_LANCE, STORM_EYE, DOWNDRAFT, BOOMERANG_BLADES, CYCLONE_CAGE -> true;
+                default -> false;
+            };
         }
 
         private boolean ready(ZephyrarchAttack attack) {

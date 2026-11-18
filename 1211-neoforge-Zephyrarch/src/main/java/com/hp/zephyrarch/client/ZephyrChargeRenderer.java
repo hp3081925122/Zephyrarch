@@ -24,7 +24,8 @@ public final class ZephyrChargeRenderer extends GeoEntityRenderer<ZephyrChargeEn
         poseStack.scale(scale, scale, scale);
         super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
         poseStack.popPose();
-        ZephyrarchVfx.renderChargeTrail(entity, partialTick, poseStack, bufferSource, this.entityRenderDispatcher.camera.getPosition());
+        ZephyrarchVfx.renderChargeTrail(entity, partialTick, poseStack, bufferSource,
+                this.entityRenderDispatcher.cameraOrientation(), this.entityRenderDispatcher.camera.getPosition());
     }
 
     @Override
@@ -34,6 +35,6 @@ public final class ZephyrChargeRenderer extends GeoEntityRenderer<ZephyrChargeEn
 
     @Override
     public boolean shouldRender(ZephyrChargeEntity entity, Frustum frustum, double x, double y, double z) {
-        return entity.shouldRender(x, y, z) && frustum.isVisible(entity.getBoundingBox().inflate(4.0D));
+        return entity.shouldRender(x, y, z) && frustum.isVisible(entity.getBoundingBox().inflate(6.0D));
     }
 }

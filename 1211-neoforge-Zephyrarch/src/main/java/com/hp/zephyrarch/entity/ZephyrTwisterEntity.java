@@ -2,11 +2,11 @@ package com.hp.zephyrarch.entity;
 
 import com.hp.zephyrarch.config.ZephyrarchConfig;
 import com.hp.zephyrarch.event.ZephyrarchCombatEvents;
+import com.hp.zephyrarch.network.ZephyrWorldVfxPayload;
 import com.hp.zephyrarch.registry.ModRegistry;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -22,10 +22,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 风暴之眼召唤的小龙卷：慢慢追踪最近的玩家，接触造成伤害并把目标抬起，被玩家打一下就会消散。 */
 public final class ZephyrTwisterEntity extends Entity {
     public static final int LIFETIME = 120;
-    private static final double SPEED = 0.06D;
+    private static final double SPEED = 0.065D;
 
     private int ownerId = -1;
     private int life;
@@ -54,10 +53,10 @@ public final class ZephyrTwisterEntity extends Entity {
     public void tick() {
         super.tick();
         if (level().isClientSide) {
-            if (random.nextInt(2) == 0) {
+            if (random.nextInt(4) == 0) {
                 double a = random.nextDouble() * Math.PI * 2.0D;
-                level().addParticle(ParticleTypes.SMALL_GUST, getX() + Math.cos(a) * 0.6D, getY() + random.nextDouble() * 2.5D,
-                        getZ() + Math.sin(a) * 0.6D, -Math.sin(a) * 0.15D, 0.05D, Math.cos(a) * 0.15D);
+                level().addParticle(ParticleTypes.SMALL_GUST, getX() + Math.cos(a) * 0.65D, getY() + random.nextDouble() * 2.4D,
+                        getZ() + Math.sin(a) * 0.65D, -Math.sin(a) * 0.12D, 0.04D, Math.cos(a) * 0.12D);
             }
             return;
         }
@@ -68,10 +67,15 @@ public final class ZephyrTwisterEntity extends Entity {
             return;
         }
 
-        Player nearest = level().getNearestPlayer(this, 32.0D);
+        LivingEntity chaseTarget = owner.getTarget();
+        if (chaseTarget == null || !chaseTarget.isAlive() || (chaseTarget instanceof Player p && (p.isCreative() || p.isSpectator()))) {
+            Player nearest = level().getNearestPlayer(this, 32.0D);
+            chaseTarget = (nearest != null && !nearest.isCreative() && !nearest.isSpectator()) ? nearest : null;
+        }
+
         Vec3 motion = new Vec3(0.0D, getDeltaMovement().y - 0.08D, 0.0D);
-        if (nearest != null && !nearest.isCreative() && !nearest.isSpectator()) {
-            Vec3 to = nearest.position().subtract(position());
+        if (chaseTarget != null) {
+            Vec3 to = chaseTarget.position().subtract(position());
             Vec3 horiz = new Vec3(to.x, 0.0D, to.z);
             if (horiz.lengthSqr() > 0.04D) {
                 horiz = horiz.normalize().scale(SPEED);
@@ -84,7 +88,7 @@ public final class ZephyrTwisterEntity extends Entity {
             setDeltaMovement(getDeltaMovement().multiply(1.0D, 0.0D, 1.0D));
         }
 
-        List<LivingEntity> victims = level().getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(0.3D),
+        List<LivingEntity> victims = level().getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(0.35D),
                 e -> e != owner && e.isAlive() && !owner.isAlliedTo(e) && !(e instanceof Player p && (p.isCreative() || p.isSpectator())));
         float damage = (float) (owner.getAttributeValue(Attributes.ATTACK_DAMAGE) * ZephyrarchConfig.TWISTER_MULTIPLIER.get());
         for (LivingEntity victim : victims) {
@@ -103,9 +107,7 @@ public final class ZephyrTwisterEntity extends Entity {
     }
 
     private void dissipate() {
-        if (level() instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(ParticleTypes.CLOUD, getX(), getY() + 1.0D, getZ(), 10, 0.4D, 0.8D, 0.4D, 0.05D);
-        }
+        ZephyrWorldVfxPayload.sendPoint(this, ZephyrWorldVfxPayload.KIND_TWISTER_DISSIPATE, position(), 1.55F, 11);
         discard();
     }
 
@@ -124,7 +126,7 @@ public final class ZephyrTwisterEntity extends Entity {
         if (isInvulnerableTo(source)) {
             return false;
         }
-        if (!level().isClientSide && source.getEntity() instanceof Player) {
+        if (!level().isClientSide && source.getEntity() != null && !(source.getEntity() instanceof ZephyrarchEntity)) {
             playSound(SoundEvents.WIND_CHARGE_BURST.value(), 1.0F, 1.3F);
             dissipate();
             return true;

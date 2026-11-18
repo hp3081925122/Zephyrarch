@@ -30,6 +30,6 @@ public final class ZephyrarchRenderer extends GeoEntityRenderer<ZephyrarchEntity
 
     @Override
     public boolean shouldRender(ZephyrarchEntity entity, Frustum frustum, double x, double y, double z) {
-        return entity.shouldRender(x, y, z) && frustum.isVisible(entity.getBoundingBox().inflate(26.0D));
+        return entity.shouldRender(x, y, z) && frustum.isVisible(entity.getBoundingBox().inflate(48.0D));
     }
 }

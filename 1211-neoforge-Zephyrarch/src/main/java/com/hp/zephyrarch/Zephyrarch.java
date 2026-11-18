@@ -5,6 +5,7 @@ import com.hp.zephyrarch.config.ZephyrarchConfig;
 import com.hp.zephyrarch.entity.ZephyrarchEntity;
 import com.hp.zephyrarch.event.ZephyrarchCombatEvents;
 import com.hp.zephyrarch.item.SovereignGauntletItem;
+import com.hp.zephyrarch.network.ZephyrWorldVfxPayload;
 import com.hp.zephyrarch.registry.ModRegistry;
 import com.hp.zephyrarch.registry.ModSounds;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -32,6 +33,7 @@ public final class Zephyrarch {
 
         modEventBus.addListener(this::registerAttributes);
         modEventBus.addListener(this::fillCreativeTabs);
+        modEventBus.addListener(ZephyrWorldVfxPayload::register);
 
         NeoForge.EVENT_BUS.register(SovereignGauntletItem.Events.class);
         NeoForge.EVENT_BUS.register(ZephyrarchCombatEvents.class);
