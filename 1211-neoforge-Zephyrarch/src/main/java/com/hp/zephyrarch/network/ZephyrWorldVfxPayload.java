@@ -67,9 +67,9 @@ public record ZephyrWorldVfxPayload(
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar("1")
-                .optional()
-                .playToClient(TYPE, STREAM_CODEC, ZephyrWorldVfxPayload::handleClient);
+        var registrar = event.registrar("1").optional();
+        registrar.playToClient(TYPE, STREAM_CODEC, ZephyrWorldVfxPayload::handleClient);
+        GauntletNetwork.register(registrar);
     }
 
     private static void handleClient(ZephyrWorldVfxPayload payload, IPayloadContext context) {

@@ -4,6 +4,7 @@ import com.hp.zephyrarch.registry.ModRegistry;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import software.bernie.geckolib.animatable.client.GeoRenderProvider;
 
 public final class ClientEvents {
@@ -13,6 +14,13 @@ public final class ClientEvents {
         event.registerEntityRenderer(ModRegistry.ZEPHYR_CHARGE.get(), ZephyrChargeRenderer::new);
         event.registerEntityRenderer(ModRegistry.ZEPHYR_BLADE.get(), ZephyrWindRenderers.Blade::new);
         event.registerEntityRenderer(ModRegistry.ZEPHYR_TWISTER.get(), ZephyrWindRenderers.Twister::new);
+    }
+
+    @SubscribeEvent
+    public static void registerClientExtensions(RegisterClientExtensionsEvent event) {
+        if (!event.isItemRegistered(ModRegistry.SOVEREIGN_GAUNTLET.get())) {
+            event.registerItem(GauntletClientController.ITEM_EXTENSIONS, ModRegistry.SOVEREIGN_GAUNTLET.get());
+        }
     }
 
     public static GeoRenderProvider createGauntletRenderProvider() {

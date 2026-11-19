@@ -5,40 +5,13 @@
       "loop": true,
       "animation_length": 2.4,
       "bones": {
-        "wind_ring_front": {
+        "wind_ring": {
           "rotation": {
             "0.0": {
-              "vector": [
-                0,
-                0,
-                0
-              ]
+              "vector": [0, 0, 0]
             },
             "2.4": {
-              "vector": [
-                0,
-                0,
-                360
-              ],
-              "easing": "linear"
-            }
-          }
-        },
-        "wind_ring_back": {
-          "rotation": {
-            "0.0": {
-              "vector": [
-                0,
-                0,
-                0
-              ]
-            },
-            "2.4": {
-              "vector": [
-                0,
-                0,
-                -360
-              ],
+              "vector": [0, 0, 360],
               "easing": "linear"
             }
           }
@@ -46,26 +19,59 @@
         "core_gem": {
           "scale": {
             "0.0": {
-              "vector": [
-                1,
-                1,
-                1
-              ]
+              "vector": [1, 1, 1]
             },
             "1.2": {
-              "vector": [
-                1.18,
-                1.18,
-                1.18
-              ],
+              "vector": [1.16, 1.16, 1.16],
               "easing": "easeInOutSine"
             },
             "2.4": {
-              "vector": [
-                1,
-                1,
-                1
-              ],
+              "vector": [1, 1, 1],
+              "easing": "easeInOutSine"
+            }
+          }
+        }
+      }
+    },
+    "animation.sovereign_gauntlet.charge": {
+      "loop": false,
+      "animation_length": 0.76,
+      "bones": {
+        "wind_ring": {
+          "rotation": {
+            "0.0": {
+              "vector": [0, 0, 0]
+            },
+            "0.76": {
+              "vector": [0, 0, 540],
+              "easing": "easeInQuad"
+            }
+          },
+          "scale": {
+            "0.0": {
+              "vector": [1, 1, 1]
+            },
+            "0.68": {
+              "vector": [1.14, 1.14, 1.08],
+              "easing": "easeOutSine"
+            },
+            "0.76": {
+              "vector": [1, 1, 1],
+              "easing": "easeInOutSine"
+            }
+          }
+        },
+        "core_gem": {
+          "scale": {
+            "0.0": {
+              "vector": [1, 1, 1]
+            },
+            "0.68": {
+              "vector": [1.48, 1.48, 1.48],
+              "easing": "easeInQuad"
+            },
+            "0.76": {
+              "vector": [1, 1, 1],
               "easing": "easeInOutSine"
             }
           }
@@ -74,216 +80,34 @@
     },
     "animation.sovereign_gauntlet.strike": {
       "loop": false,
-      "animation_length": 0.45,
+      "animation_length": 0.42,
       "bones": {
-        "gauntlet_body": {
-          "position": {
-            "0.0": {
-              "vector": [
-                0,
-                0,
-                0
-              ]
-            },
-            "0.08": {
-              "vector": [
-                0,
-                0,
-                2.5
-              ],
-              "easing": "easeOutQuad"
-            },
-            "0.18": {
-              "vector": [
-                0,
-                0,
-                -5.5
-              ],
-              "easing": "easeOutBack",
-              "easingArgs": [
-                1.35
-              ]
-            },
-            "0.45": {
-              "vector": [
-                0,
-                0,
-                0
-              ],
-              "easing": "easeInOutSine"
-            }
-          },
-          "rotation": {
-            "0.0": {
-              "vector": [
-                0,
-                0,
-                0
-              ]
-            },
-            "0.18": {
-              "vector": [
-                0,
-                0,
-                18
-              ],
-              "easing": "easeOutCubic"
-            },
-            "0.45": {
-              "vector": [
-                0,
-                0,
-                0
-              ],
-              "easing": "easeInOutSine"
-            }
-          }
-        },
         "core_gem": {
           "scale": {
             "0.0": {
-              "vector": [
-                1,
-                1,
-                1
-              ]
+              "vector": [1, 1, 1]
             },
-            "0.18": {
-              "vector": [
-                1.55,
-                1.55,
-                1.55
-              ],
+            "0.1": {
+              "vector": [1.68, 1.68, 1.68],
               "easing": "easeOutExpo"
             },
-            "0.45": {
-              "vector": [
-                1,
-                1,
-                1
-              ],
+            "0.42": {
+              "vector": [1, 1, 1],
               "easing": "easeInOutSine"
             }
           }
         },
-        "wind_ring_front": {
+        "wind_ring": {
           "scale": {
             "0.0": {
-              "vector": [
-                1,
-                1,
-                1
-              ]
+              "vector": [1, 1, 1]
             },
-            "0.18": {
-              "vector": [
-                1.32,
-                1.32,
-                1.1
-              ],
+            "0.1": {
+              "vector": [1.3, 1.3, 1.15],
               "easing": "easeOutExpo"
             },
-            "0.45": {
-              "vector": [
-                1,
-                1,
-                1
-              ],
-              "easing": "easeInOutSine"
-            }
-          }
-        }
-      }
-    },
-    "animation.sovereign_gauntlet.slam": {
-      "loop": false,
-      "animation_length": 0.65,
-      "bones": {
-        "gauntlet_body": {
-          "position": {
-            "0.0": {
-              "vector": [
-                0,
-                0,
-                0
-              ]
-            },
-            "0.22": {
-              "vector": [
-                0,
-                2.0,
-                3.0
-              ],
-              "easing": "easeOutCubic"
-            },
-            "0.36": {
-              "vector": [
-                0,
-                -1.5,
-                -6.5
-              ],
-              "easing": "easeInQuart"
-            },
-            "0.65": {
-              "vector": [
-                0,
-                0,
-                0
-              ],
-              "easing": "easeInOutSine"
-            }
-          }
-        },
-        "wind_ring_front": {
-          "scale": {
-            "0.0": {
-              "vector": [
-                1,
-                1,
-                1
-              ]
-            },
-            "0.36": {
-              "vector": [
-                1.5,
-                1.5,
-                1.2
-              ],
-              "easing": "easeOutExpo"
-            },
-            "0.65": {
-              "vector": [
-                1,
-                1,
-                1
-              ],
-              "easing": "easeInOutSine"
-            }
-          }
-        },
-        "wind_ring_back": {
-          "scale": {
-            "0.0": {
-              "vector": [
-                1,
-                1,
-                1
-              ]
-            },
-            "0.36": {
-              "vector": [
-                1.4,
-                1.4,
-                1.2
-              ],
-              "easing": "easeOutExpo"
-            },
-            "0.65": {
-              "vector": [
-                1,
-                1,
-                1
-              ],
+            "0.42": {
+              "vector": [1, 1, 1],
               "easing": "easeInOutSine"
             }
           }
