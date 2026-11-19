@@ -54,10 +54,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public final class SovereignGauntletItem extends SwordItem implements GeoItem {
-    public static final int SINGLE_CHARGE_TICKS = 14;
-    public static final int DUAL_CHARGE_TICKS = 10;
-    private static final int POST_PUNCH_RECOVERY_TICKS = 3;
-    private static final int DASH_COOLDOWN_TICKS = 28;
+    public static final int SINGLE_CHARGE_TICKS = 8;
+    public static final int DUAL_CHARGE_TICKS = 5;
+    private static final int POST_PUNCH_RECOVERY_TICKS = 1;
+    private static final int DASH_COOLDOWN_TICKS = 18;
 
     private static final RawAnimation ANIM_IDLE = RawAnimation.begin().thenLoop("animation.sovereign_gauntlet.idle");
     private static final RawAnimation ANIM_CHARGE = RawAnimation.begin().thenPlay("animation.sovereign_gauntlet.charge");

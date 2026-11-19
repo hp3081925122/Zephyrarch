@@ -42,10 +42,10 @@ import java.util.List;
 
 @EventBusSubscriber(modid = Zephyrarch.MOD_ID, value = Dist.CLIENT)
 public final class GauntletClientController {
-    private static final int PUNCH_ANIM_DURATION = 9;
-    private static final int DASH_ANIM_DURATION = 11;
-    private static final int PUNCH_VFX_DURATION = 11;
-    private static final int DASH_VFX_DURATION = 13;
+    private static final int PUNCH_ANIM_DURATION = 6;
+    private static final int DASH_ANIM_DURATION = 7;
+    private static final int PUNCH_VFX_DURATION = 8;
+    private static final int DASH_VFX_DURATION = 9;
 
     public static final EnumProxy<HumanoidModel.ArmPose> GAUNTLET_ARM_POSE_PROXY = new EnumProxy<>(
             HumanoidModel.ArmPose.class,
@@ -266,17 +266,17 @@ public final class GauntletClientController {
         if (punchTicks >= 0) {
             float age = punchTicks + partialTick;
             float thrust;
-            if (age < 1.8F) {
-                float t = age / 1.8F;
+            if (age < 1.2F) {
+                float t = age / 1.2F;
                 thrust = 1.0F - (1.0F - t) * (1.0F - t) * (1.0F - t);
-            } else if (age < 3.2F) {
-                thrust = 1.0F - (age - 1.8F) * 0.04F;
+            } else if (age < 2.1F) {
+                thrust = 1.0F - (age - 1.2F) * 0.04F;
             } else {
-                float t = Mth.clamp((age - 3.2F) / (PUNCH_ANIM_DURATION - 3.2F), 0.0F, 1.0F);
-                thrust = (1.0F - t) * (1.0F - t) * 0.94F;
+                float t = Mth.clamp((age - 2.1F) / (PUNCH_ANIM_DURATION - 2.1F), 0.0F, 1.0F);
+                thrust = (1.0F - t) * (1.0F - t) * 0.96F;
             }
 
-            float shockJitter = (age >= 1.4F && age <= 3.6F) ? Mth.sin(age * 16.0F) * 0.014F : 0.0F;
+            float shockJitter = (age >= 1.0F && age <= 2.4F) ? Mth.sin(age * 18.0F) * 0.014F : 0.0F;
             ps.translate(-sign * 0.28F * thrust + shockJitter, 0.14F * thrust, -0.62F * thrust);
             ps.mulPose(Axis.YP.rotationDegrees(sign * 8.0F * thrust));
             ps.mulPose(Axis.XP.rotationDegrees(-20.0F * thrust));
@@ -334,13 +334,13 @@ public final class GauntletClientController {
         if (punchTicks >= 0) {
             float age = punchTicks + partialTick;
             float thrust;
-            if (age < 1.8F) {
-                float t = age / 1.8F;
+            if (age < 1.2F) {
+                float t = age / 1.2F;
                 thrust = 1.0F - (1.0F - t) * (1.0F - t);
-            } else if (age < 3.4F) {
+            } else if (age < 2.2F) {
                 thrust = 1.0F;
             } else {
-                float t = Mth.clamp((age - 3.4F) / (PUNCH_ANIM_DURATION - 3.4F), 0.0F, 1.0F);
+                float t = Mth.clamp((age - 2.2F) / (PUNCH_ANIM_DURATION - 2.2F), 0.0F, 1.0F);
                 thrust = (1.0F - t) * (1.0F - t);
             }
 
