@@ -399,7 +399,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         if (this.level() instanceof ServerLevel serverLevel) {
             serverLevel.sendParticles(ParticleTypes.FLASH, getX(), getY() + 1.8D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
-        playBossSound(ModSounds.PHASE_SHIFT.get(), 2.6F, 1.0F);
+        playBossSound(ModSounds.PHASE_SHIFT.get(), 1.75F, 1.0F);
         LOGGER.debug("Zephyrarch [id={}] triggered Phase 2 rebirth and restored full health ({})", this.getId(), this.getMaxHealth());
     }
 
@@ -669,23 +669,23 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             faceTarget();
         }
         if (t == 6 || t == 18) {
-            playBossSound(ModSounds.PUNCH_SWING.get(), 1.4F, t == 6 ? 1.0F : 0.85F);
+            playBossSound(ModSounds.PUNCH_SWING.get(), 1.15F, t == 6 ? 1.0F : 0.85F);
             Vec3 lunge = forward().scale(0.42D);
             this.setDeltaMovement(lunge.x, this.getDeltaMovement().y, lunge.z);
         }
         if (t == 11) {
             int hits = strikeArc(level, 3.9D, 0.707D, ZephyrarchConfig.COMBO_FIRST_MULTIPLIER.get(), 0.4D, 0.12D);
-            playBossSound(ModSounds.PUNCH_IMPACT.get(), hits > 0 ? 1.85F : 1.45F, 1.05F);
+            playBossSound(ModSounds.PUNCH_IMPACT.get(), hits > 0 ? 1.45F : 1.15F, 1.05F);
         } else if (t == 23) {
             int hits = strikeArc(level, 4.4D, 0.64D, ZephyrarchConfig.COMBO_SECOND_MULTIPLIER.get(), 0.6D, 0.2D);
-            playBossSound(ModSounds.PUNCH_IMPACT.get(), hits > 0 ? 2.15F : 1.65F, 0.86F);
+            playBossSound(ModSounds.PUNCH_IMPACT.get(), hits > 0 ? 1.65F : 1.25F, 0.86F);
         }
     }
 
     private void tickArmSweep(ServerLevel level) {
         int t = this.attackTick;
         if (t == 13) {
-            playBossSound(ModSounds.SWEEP_SPIN.get(), 1.8F, 1.0F);
+            playBossSound(ModSounds.SWEEP_SPIN.get(), 1.45F, 1.0F);
         }
         if (t == 17) {
             for (LivingEntity victim : victimsAround(level, position(), 5.0D, 0.5D, 3.0D)) {
@@ -709,11 +709,11 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             setSkillVec(this.rushDir);
         }
         if (t == 2) {
-            playBossSound(ModSounds.RUSH_CHARGE.get(), 1.6F, 1.0F);
+            playBossSound(ModSounds.RUSH_CHARGE.get(), 1.25F, 1.0F);
         }
         if (t >= 16 && t <= 22) {
             if (t == 16) {
-                playBossSound(ModSounds.RUSH_DASH.get(), 2.0F, 1.0F);
+                playBossSound(ModSounds.RUSH_DASH.get(), 1.5F, 1.0F);
             }
             if (!this.rushStopped) {
                 Vec3 before = position();
@@ -742,7 +742,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     private void tickSkyHammer(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 1) {
-            playBossSound(ModSounds.HAMMER_RISE.get(), 1.8F, 1.0F);
+            playBossSound(ModSounds.HAMMER_RISE.get(), 1.35F, 1.0F);
             this.hammerTarget = position();
             setSkillVec(this.hammerTarget);
         }
@@ -777,15 +777,15 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 applyScaledAttackFrom(victim, c, mult, 0.4D, 0.8D);
             }
             level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, c.x, c.y + 0.25D, c.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-            playBossSound(ModSounds.HAMMER_SLAM.get(), 2.6F, 1.0F);
-            playBossSound(SoundEvents.MACE_SMASH_GROUND_HEAVY, 1.35F, 0.85F);
+            playBossSound(ModSounds.HAMMER_SLAM.get(), 1.75F, 1.0F);
+            playBossSound(SoundEvents.MACE_SMASH_GROUND_HEAVY, 1.15F, 0.85F);
         }
     }
 
     private void tickVortexStomp(ServerLevel level) {
         int t = this.attackTick;
         if (t == 2) {
-            playBossSound(ModSounds.STOMP_PULL.get(), 1.8F, 1.0F);
+            playBossSound(ModSounds.STOMP_PULL.get(), 1.35F, 1.0F);
         }
         if (t >= 8 && t <= 28) {
             double kbScale = ZephyrarchConfig.KNOCKBACK_SCALE.get();
@@ -805,8 +805,8 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 applyScaledAttack(victim, ZephyrarchConfig.STOMP_MULTIPLIER.get(), 1.4D, 0.5D);
             }
             level.sendParticles(ParticleTypes.GUST_EMITTER_SMALL, getX(), getY() + 0.5D, getZ(), 1, 0.0D, 0.0D, 0.0D, 0.0D);
-            playBossSound(ModSounds.STOMP_BURST.get(), 2.5F, 1.0F);
-            playBossSound(SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), 1.4F, 0.72F);
+            playBossSound(ModSounds.STOMP_BURST.get(), 1.7F, 1.0F);
+            playBossSound(SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), 1.15F, 0.72F);
         }
     }
 
@@ -854,7 +854,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     private void tickTempestLance(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 2) {
-            playBossSound(ModSounds.LANCE_CHARGE.get(), 2.0F, 1.0F);
+            playBossSound(ModSounds.LANCE_CHARGE.get(), 1.5F, 1.0F);
         }
         if (t <= 30) {
             faceTarget();
@@ -885,8 +885,8 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 }
             }
             ZephyrWorldVfxPayload.sendPoint(this, ZephyrWorldVfxPayload.KIND_CHARGE_BURST, end, 1.75F, 11);
-            playBossSound(ModSounds.LANCE_FIRE.get(), 2.6F, 1.0F);
-            playBossSound(SoundEvents.WARDEN_SONIC_BOOM, 1.15F, 1.48F);
+            playBossSound(ModSounds.LANCE_FIRE.get(), 1.75F, 1.0F);
+            playBossSound(SoundEvents.WARDEN_SONIC_BOOM, 1.0F, 1.48F);
         }
         if (t == 44) {
             this.entityData.set(DATA_LANCE_STATE, 0);
@@ -1003,14 +1003,14 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                 Vec3 start = position().add(right().scale(1.25D * side)).add(0.0D, 1.55D, 0.0D);
                 level.addFreshEntity(new ZephyrBladeEntity(level, this, start, crossPoint, target.getId(), side));
             }
-            playBossSound(ModSounds.BLADE_THROW.get(), 2.0F, 1.0F);
+            playBossSound(ModSounds.BLADE_THROW.get(), 1.45F, 1.0F);
         }
     }
 
     private void tickCycloneCage(ServerLevel level, LivingEntity target) {
         int t = this.attackTick;
         if (t == 1) {
-            playBossSound(ModSounds.CAGE_FORM.get(), 2.4F, 1.0F);
+            playBossSound(ModSounds.CAGE_FORM.get(), 1.65F, 1.0F);
         }
         if (target != null) {
             faceTarget();
@@ -1035,7 +1035,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             orb.setPos(from.x, from.y, from.z);
             orb.shoot(dir.x, dir.y, dir.z, 0.35F, 0.0F);
             level.addFreshEntity(orb);
-            playBossSound(ModSounds.ORB_SHOOT.get(), 1.8F, 1.0F);
+            playBossSound(ModSounds.ORB_SHOOT.get(), 1.35F, 1.0F);
         }
     }
 
@@ -1164,7 +1164,7 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         int t = this.attackTick;
         if (t == 1) {
             planWindDash(target);
-            playBossSound(ModSounds.WIND_DASH.get(), 1.8F, 1.0F);
+            playBossSound(ModSounds.WIND_DASH.get(), 1.35F, 1.0F);
             ZephyrWorldVfxPayload.sendDirected(this, ZephyrWorldVfxPayload.KIND_WIND_DASH_TRAIL, position(), this.windDashTotalVec, 1.0F, 12);
         }
         if (t >= 1 && t <= WIND_DASH_STEP_WEIGHTS.length) {
