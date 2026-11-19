@@ -571,8 +571,6 @@ public final class GauntletClientController {
         Vec3 axisB = dir.cross(axisA).normalize();
         PoseStack.Pose worldPose = ps.last();
         VertexConsumer vcRibbon = buffers.getBuffer(RenderType.entityTranslucent(ZephyrarchVfx.RIBBON));
-        VertexConsumer vcGlow = buffers.getBuffer(ZephyrarchVfx.additive(ZephyrarchVfx.RIBBON_GLOW));
-
         for (int i = 0; i < 4; i++) {
             double ang = (Math.PI * 0.5D * i) + (age * 0.28D * spinSign);
             Vec3 radial = axisA.scale(Math.cos(ang)).add(axisB.scale(Math.sin(ang)));
@@ -586,6 +584,18 @@ public final class GauntletClientController {
                     p0.add(side.scale(w)), p1.add(side.scale(w * 0.35F)),
                     p1.subtract(side.scale(w * 0.35F)), p0.subtract(side.scale(w)),
                     0.0F, 0.0F, 1.8F, 1.0F, 0.88F, 0.99F, 1.0F, 0.82F * fade);
+        }
+
+        VertexConsumer vcGlow = buffers.getBuffer(ZephyrarchVfx.additive(ZephyrarchVfx.RIBBON_GLOW));
+        for (int i = 0; i < 4; i++) {
+            double ang = (Math.PI * 0.5D * i) + (age * 0.28D * spinSign);
+            Vec3 radial = axisA.scale(Math.cos(ang)).add(axisB.scale(Math.sin(ang)));
+            Vec3 p0 = startOrigin.add(dir.scale(coneStart)).add(radial.scale(baseR * 0.85D));
+            Vec3 p1 = startOrigin.add(dir.scale(coneEnd * 1.04D)).add(radial.scale(tipR * 0.92D));
+            Vec3 side = dir.cross(camPos.subtract(p0.add(p1).scale(0.5D)));
+            side = side.lengthSqr() < 1.0E-5D ? radial : side.normalize();
+            float w = 0.16F * fade;
+
             ZephyrarchVfx.quadTwoSided(worldPose, vcGlow,
                     p0.add(side.scale(w * 0.65F)), p1.add(side.scale(w * 0.25F)),
                     p1.subtract(side.scale(w * 0.25F)), p0.subtract(side.scale(w * 0.65F)),
