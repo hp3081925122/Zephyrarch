@@ -90,7 +90,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     private static final EntityDataAccessor<Vector3f> DATA_CAGE_CENTER = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.VECTOR3);
     private static final EntityDataAccessor<Integer> DATA_CAGE_TICKS = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Vector3f> DATA_SKILL_VEC = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.VECTOR3);
-    private static final EntityDataAccessor<Integer> DATA_GRABBED_ID = SynchedEntityData.defineId(ZephyrarchEntity.class, EntityDataSerializers.INT);
 
     private static final RawAnimation ANIM_VORTEX = RawAnimation.begin().thenLoop("animation.zephyrarch.vortex_spin");
     private static final RawAnimation ANIM_IDLE = RawAnimation.begin().thenLoop("animation.zephyrarch.idle");
@@ -127,7 +126,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
     private boolean rushStopped;
     private final Set<Integer> rushHit = new HashSet<>();
     private Vec3 hammerTarget = Vec3.ZERO;
-    private int grabbedId = -1;
     private final List<Vec3> stormEyeMarks = new ArrayList<>();
     private Vec3 lanceDir = Vec3.ZERO;
     private double lanceLength = LANCE_RANGE;
@@ -181,7 +179,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         builder.define(DATA_CAGE_CENTER, new Vector3f());
         builder.define(DATA_CAGE_TICKS, 0);
         builder.define(DATA_SKILL_VEC, new Vector3f());
-        builder.define(DATA_GRABBED_ID, -1);
     }
 
     @Override
@@ -256,10 +253,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         return new Vec3(v.x, v.y, v.z);
     }
 
-    public int getGrabbedEntityId() {
-        return this.entityData.get(DATA_GRABBED_ID);
-    }
-
     public float getActionSpeedMultiplier() {
         if (getAttack() == ZephyrarchAttack.PHASE_SHIFT) {
             return 1.0F;
@@ -296,10 +289,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
         }
         if (prev == ZephyrarchAttack.TEMPEST_LANCE || next == ZephyrarchAttack.NONE) {
             this.entityData.set(DATA_LANCE_STATE, 0);
-        }
-        if (prev == ZephyrarchAttack.GALE_GRAB) {
-            this.grabbedId = -1;
-            this.entityData.set(DATA_GRABBED_ID, -1);
         }
         this.attackTick = 0;
         this.attackStepAccumulator = 0.0D;
@@ -402,7 +391,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             this.removeEffect(effect);
         }
 
-        releaseGrab();
         this.bossEvent.setColor(BossEvent.BossBarColor.PURPLE);
         this.bossEvent.setProgress(1.0F);
         java.util.Arrays.fill(this.skillCooldowns, 0);
@@ -661,7 +649,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             case ARM_SWEEP -> tickArmSweep(level);
             case GALE_RUSH -> tickGaleRush(level, target);
             case SKY_HAMMER -> tickSkyHammer(level, target);
-            case GALE_GRAB -> tickGaleGrab(level, target);
             case VORTEX_STOMP -> tickVortexStomp(level);
             case PHASE_SHIFT -> tickPhaseShift(level);
             case GALE_BOLTS -> tickGaleBolts(level, target);
@@ -793,90 +780,6 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
             playBossSound(ModSounds.HAMMER_SLAM.get(), 2.6F, 1.0F);
             playBossSound(SoundEvents.MACE_SMASH_GROUND_HEAVY, 1.35F, 0.85F);
         }
-    }
-
-    private void tickGaleGrab(ServerLevel level, LivingEntity target) {
-        int t = this.attackTick;
-        if (t < 10) {
-            faceTarget();
-            if (t == 3) {
-                playBossSound(ModSounds.PUNCH_SWING.get(), 1.4F, 0.7F);
-            }
-            return;
-        }
-        if (t == 10) {
-            LivingEntity caught = findGrabVictim(level, target);
-            if (caught == null) {
-                startAttack(ZephyrarchAttack.GRAB_WHIFF);
-                return;
-            }
-            if (caught instanceof Player player && player.isBlocking()
-                    && player.getLookAngle().dot(position().subtract(player.position()).normalize()) > 0.0D) {
-                player.disableShield();
-                playBossSound(SoundEvents.SHIELD_BLOCK, 1.6F, 0.7F);
-                playBossSound(ModSounds.STAGGER.get(), 1.6F, 1.0F);
-                startAttack(ZephyrarchAttack.STAGGER);
-                return;
-            }
-            this.grabbedId = caught.getId();
-            this.entityData.set(DATA_GRABBED_ID, this.grabbedId);
-            playBossSound(ModSounds.GRAB_CATCH.get(), 1.8F, 1.0F);
-        }
-        Entity held = this.grabbedId >= 0 ? level.getEntity(this.grabbedId) : null;
-        if (!(held instanceof LivingEntity victim) || !victim.isAlive()) {
-            if (t <= 32) {
-                releaseGrab();
-            }
-            return;
-        }
-        if (t < 32) {
-            Vec3 hand = position().add(forward().scale(1.6D)).add(right().scale(0.9D)).add(0.0D, 3.2D - victim.getBbHeight() * 0.5D, 0.0D);
-            victim.teleportTo(hand.x, hand.y, hand.z);
-            victim.setDeltaMovement(Vec3.ZERO);
-            victim.fallDistance = 0.0F;
-            victim.hurtMarked = true;
-            if (t % 5 == 0) {
-                ZephyrarchCombatEvents.applyAntiHealIfEligible(this, victim);
-                victim.hurt(this.damageSources().mobAttack(this), (float) (getAttributeValue(Attributes.ATTACK_DAMAGE) * ZephyrarchConfig.GRAB_SQUEEZE_MULTIPLIER.get()));
-            }
-        } else if (t == 32) {
-            Vec3 back = forward().scale(-1.6D);
-            double resist = Math.max(0.0D, 1.0D - victim.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
-            double s = Math.max(0.35D, resist) * ZephyrarchConfig.KNOCKBACK_SCALE.get();
-            victim.setDeltaMovement(back.x * s, 0.9D * s, back.z * s);
-            victim.hurtMarked = true;
-            playBossSound(ModSounds.GRAB_THROW.get(), 1.8F, 1.0F);
-            releaseGrab();
-        }
-    }
-
-    private LivingEntity findGrabVictim(ServerLevel level, LivingEntity preferred) {
-        Vec3 look = forward();
-        LivingEntity best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (LivingEntity e : victimsInRadius(level, 4.5D, 3.0D)) {
-            if (e.getBbWidth() > getBbWidth() || e.getBbHeight() > getBbHeight() || e instanceof ZephyrarchEntity) {
-                continue;
-            }
-            Vec3 flat = new Vec3(e.getX() - getX(), 0.0D, e.getZ() - getZ());
-            double d = flat.length() - e.getBbWidth() * 0.5D;
-            if (d > 3.5D || (flat.lengthSqr() > 0.25D && flat.normalize().dot(look) < 0.866D)) {
-                continue;
-            }
-            if (e == preferred) {
-                return e;
-            }
-            if (d < bestDist) {
-                bestDist = d;
-                best = e;
-            }
-        }
-        return best;
-    }
-
-    private void releaseGrab() {
-        this.grabbedId = -1;
-        this.entityData.set(DATA_GRABBED_ID, -1);
     }
 
     private void tickVortexStomp(ServerLevel level) {
@@ -1444,10 +1347,9 @@ public final class ZephyrarchEntity extends Monster implements GeoEntity {
                     add(pool, weights, ZephyrarchAttack.VORTEX_STOMP, 50);
                 }
                 if (pool.isEmpty()) {
-                    add(pool, weights, ZephyrarchAttack.GALE_COMBO, 30);
-                    add(pool, weights, ZephyrarchAttack.ARM_SWEEP, 25);
-                    add(pool, weights, ZephyrarchAttack.GALE_GRAB, 20);
-                    add(pool, weights, ZephyrarchAttack.VORTEX_STOMP, 25);
+                    add(pool, weights, ZephyrarchAttack.GALE_COMBO, 40);
+                    add(pool, weights, ZephyrarchAttack.ARM_SWEEP, 30);
+                    add(pool, weights, ZephyrarchAttack.VORTEX_STOMP, 30);
                 }
             } else if (dist <= 10.0D) {
                 add(pool, weights, ZephyrarchAttack.GALE_RUSH, 50);

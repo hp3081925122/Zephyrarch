@@ -85,8 +85,6 @@ public final class ZephyrarchVfx {
             case ARM_SWEEP -> renderArmSweep(boss, age, time, bodyYaw, ps, buffers);
             case GALE_RUSH -> renderRush(boss, age, time, bodyYaw, ps, buffers, cameraRot);
             case SKY_HAMMER -> renderHammer(boss, partialTick, age, time, ps, buffers, cameraRot);
-            case GALE_GRAB -> renderGrab(boss, partialTick, age, time, bodyYaw, ps, buffers, cameraRot);
-            case GRAB_WHIFF -> renderGrabWhiff(age, bodyYaw, ps, buffers);
             case VORTEX_STOMP -> renderStomp(boss, age, time, ps, buffers, cameraRot);
             case PHASE_SHIFT -> renderPhaseShiftRebirth(age, time, ps, buffers, cameraRot);
             case GALE_BOLTS -> renderGaleBolts(age, bodyYaw, ps, buffers, cameraRot);
@@ -340,65 +338,6 @@ public final class ZephyrarchVfx {
                 drawBillboardFlare(ps, buffers, cameraRot, new Vec3(0.0D, ground + 0.65D, 0.0D),
                         2.35F * pFade, age * 10.0F, pFade, 0.95F * pFade, 0.72F * pFade);
             }
-        }
-    }
-
-    private static void renderGrab(ZephyrarchEntity boss, float partialTick, float age, float time, float bodyYaw, PoseStack ps, MultiBufferSource buffers, Quaternionf cameraRot) {
-        Vec3 fwd = Vec3.directionFromRotation(0.0F, bodyYaw);
-        Vec3 rgt = new Vec3(-fwd.z, 0.0D, fwd.x);
-
-        if (age < 11.0F) {
-            float k = age / 10.0F;
-            Vec3 reachPos = fwd.scale(0.6D + 1.5D * k).add(rgt.scale(0.85D)).add(0.0D, 2.05D + 0.45D * k, 0.0D);
-            drawBillboardFlare(ps, buffers, cameraRot, reachPos, 0.40F + 0.65F * k, time * 16.0F,
-                    0.65F * k, 0.94F * k, k);
-            if (age >= 7.0F) {
-                float sk = (age - 7.0F) / 4.0F;
-                drawSlashArc(ps, buffers, bodyYaw, 2.15D, 1.5D, 3.35D, -28.0F, true, sk * 0.55F, false);
-            }
-            return;
-        }
-
-        int grabbedId = boss.getGrabbedEntityId();
-        if (age < 32.0F && grabbedId >= 0) {
-            Entity held = boss.level().getEntity(grabbedId);
-            Vec3 center;
-            if (held != null) {
-                center = held.getPosition(partialTick).add(0.0D, held.getBbHeight() * 0.5D, 0.0D).subtract(boss.getPosition(partialTick));
-            } else {
-                center = fwd.scale(1.6D).add(rgt.scale(0.9D)).add(0.0D, 3.0D, 0.0D);
-            }
-            float squeezePulse = 0.75F + 0.25F * Mth.sin(age * 1.25F);
-            ps.pushPose();
-            ps.translate(center.x, center.y, center.z);
-            drawTiltedOrbitRibbon(ps, buffers, 0.0D, 0.92F * squeezePulse, 0.28F, 34.0F, 18.0F, -time * 0.28F,
-                    0.82F, 0.98F, 1.0F, 0.78F, 0.65F, 0.92F, 1.0F);
-            drawTiltedOrbitRibbon(ps, buffers, 0.0D, 0.86F * squeezePulse, 0.25F, -32.0F, -22.0F, time * 0.32F,
-                    1.0F, 0.94F, 0.65F, 0.68F, 0.85F, 0.82F, 0.45F);
-            drawFlatRing(ps, buffers, -0.35D, 1.05F * squeezePulse, time * 26.0F,
-                    0.85F, 0.98F, 1.0F, 0.65F, 0.55F, 0.88F, 1.0F);
-            ps.popPose();
-            drawBillboardFlare(ps, buffers, cameraRot, center, 0.65F * squeezePulse, -time * 14.0F, 0.75F, 0.95F, 1.0F);
-            return;
-        }
-
-        if (age >= 31.0F && age <= 42.0F) {
-            float k = (age - 31.0F) / 11.0F;
-            ps.pushPose();
-            ps.translate(0.0D, 2.45D, 0.0D);
-            ps.mulPose(Axis.YP.rotationDegrees(-bodyYaw + 180.0F));
-            ps.mulPose(Axis.XP.rotationDegrees(-35.0F));
-            drawSlashArc(ps, buffers, 0.0F, 0.0D, 1.4D, 3.6D, -15.0F, true, k, true);
-            ps.popPose();
-
-            drawDirectedRing(ps, buffers, bodyYaw + 180.0F, 2.55D, 0.8D + 2.2D * k, 0.95F + 1.55F * k, age * 24.0F, 1.0F - k, true);
-        }
-    }
-
-    private static void renderGrabWhiff(float age, float bodyYaw, PoseStack ps, MultiBufferSource buffers) {
-        if (age <= 8.0F) {
-            float k = age / 8.0F;
-            drawSlashArc(ps, buffers, bodyYaw, 2.0D, 1.6D, 3.1D, -24.0F, true, 0.35F + 0.65F * k, false);
         }
     }
 
